@@ -4,6 +4,7 @@ const cors = require("cors");
 
 const connectDB = require("./src/config/db");
 const authRoutes = require("./src/routes/authRoutes");
+const authorizeRoles = require("./src/middleware/roleMiddleware");
 
 // 🔐 Load environment variables
 dotenv.config();
@@ -28,7 +29,15 @@ app.get("/api/test", protect, (req, res) => {
   });
 });
 
-// 🏠 Health check route
+// 👇 Admin only route
+app.get("/api/admin", protect, authorizeRoles("admin"), (req, res) => {
+  res.json({
+    msg: "Welcome Admin",
+    user: req.user
+    
+  });
+});
+
 app.get("/", (req, res) => {
   res.send("ResolveHub API is running...");
 });
@@ -38,7 +47,7 @@ app.use((req, res) => {
   res.status(404).json({ message: "Route not found" });
 });
 
-// 🚀 Start Server AFTER DB Connection
+
 const startServer = async () => {
   try {
     await connectDB(); // ✅ Ensure DB connects first
