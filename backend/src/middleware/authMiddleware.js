@@ -7,8 +7,7 @@ const protect = (req, res, next) => {
     try {
       token = req.headers.authorization.split(" ")[1];
 
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
+    const decoded = jwt.verify(token, process.env.JWT_ACCESS_SECRET);
       req.user = decoded; // attach user info
       next();
     } catch (error) {
@@ -19,6 +18,6 @@ const protect = (req, res, next) => {
   if (!token) {
     return res.status(401).json({ msg: "No token, authorization denied" });
   }
-};
+}; 
 
 module.exports = protect;
