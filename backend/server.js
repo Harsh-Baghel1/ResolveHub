@@ -4,7 +4,10 @@ const cors = require("cors");
 
 const connectDB = require("./src/config/db");
 const authRoutes = require("./src/routes/authRoutes");
+const complaintRoutes = require("./src/routes/complaintRoutes");
+const protect = require("./src/middleware/authMiddleware");
 const authorizeRoles = require("./src/middleware/roleMiddleware");
+
 
 // 🔐 Load environment variables
 dotenv.config();
@@ -18,8 +21,8 @@ app.use(express.json());
 
 // 📌 Routes
 app.use("/api/auth", authRoutes);
+app.use("/api/complaints", complaintRoutes);
 
-const protect = require("./src/middleware/authMiddleware");
 
 // 🔐 Protected test route
 app.get("/api/test", protect, (req, res) => {
