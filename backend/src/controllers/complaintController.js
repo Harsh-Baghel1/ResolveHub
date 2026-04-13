@@ -183,3 +183,51 @@ exports.updateStatus = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+exports.getOverdueComplaints = async (req, res) => {
+  try {
+    const now = new Date();
+
+    const complaints = await Complaint.find({
+      slaDueDate: { $lt: now },
+      status: { $nin: ["resolved", "closed"] }
+    })
+    .populate("createdBy", "name email")
+    .populate("assignedTo", "name email");
+
+    res.json({
+      count: complaints.length,
+      complaints
+    });
+
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.getDashboardStats = async (req, res) => {
+  try {
+    const total = await Complaint.countDocuments();
+
+    const open = await Complaint.countDocuments({ status: "open" });
+    const inProgress = await Complaint.countDocuments({ status: "in_progress" });
+    const resolved = await Complaint.countDocuments({ status: "resolved" });
+
+    const now = new Date();
+    const overdue = await Complaint.countDocuments({
+      slaDueDate: { $lt: now },
+      status: { $nin: ["resolved", "closed"] }
+    });
+
+    res.json({
+      total,
+      open,
+      inProgress,
+      resolved,
+      overdue
+    });
+
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
