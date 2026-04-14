@@ -20,7 +20,4 @@ router.put("/status", protect, authorizeRoles("admin", "agent"), updateStatus);
 router.get("/overdue", protect, authorizeRoles("admin"), getOverdueComplaints);
 router.get("/stats", protect, authorizeRoles("admin"), getDashboardStats);
 
-
-
-
 module.exports = router;

@@ -123,7 +123,7 @@ exports.assignComplaint = async (req, res) => {
       return res.status(404).json({ msg: "Complaint not found" });
     }
 
-    // ✅ CHECK USER EXISTS
+    //  CHECK USER EXISTS
     const user = await User.findById(assignedTo);
     if (!user) {
       return res.status(404).json({ msg: "Assigned user not found" });
@@ -160,7 +160,7 @@ exports.updateStatus = async (req, res) => {
       return res.status(404).json({ msg: "Complaint not found" });
     }
 
-    // 🔥 ADD THIS LOGIC
+    // 🔥 LOGIC
     if (
       req.user.role === "agent" &&
       complaint.assignedTo?.toString() !== req.user.id
