@@ -71,6 +71,7 @@ const generateRefreshToken = (user) => {
   );
 };
 
+
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -93,13 +94,23 @@ exports.login = async (req, res) => {
       refreshToken,
       user: {
         id: user._id,
-        role: user.role
+        role: user.role,
+        email: user.email,
+        name: user.name
       }
     });
 
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
+};
 
-  
+exports.getMe = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select("-password");
+
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 };
