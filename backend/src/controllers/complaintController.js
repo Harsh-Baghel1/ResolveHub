@@ -1,10 +1,11 @@
 const Complaint = require("../models/Complaint");
-const User = require("../models/User"); 
+const User = require("../models/User");
 
+//  SLA STATUS HELPER
 const getSLAStatus = (complaint) => {
   const now = new Date();
 
-  if (complaint.status === "resolved" || complaint.status === "closed") {
+  if (["resolved", "closed"].includes(complaint.status)) {
     return "completed";
   }
 
@@ -15,25 +16,22 @@ const getSLAStatus = (complaint) => {
   return "within_sla";
 };
 
-// Create Complaint
+//  CREATE COMPLAINT
 exports.createComplaint = async (req, res) => {
   try {
     const { title, description, category, priority = "medium" } = req.body;
 
-    //  Basic validation
     if (!title || !description || !category) {
       return res.status(400).json({
         msg: "Title, description, and category are required",
       });
     }
 
-    // (priority validation)
     const allowedPriorities = ["low", "medium", "high"];
-    if (priority && !allowedPriorities.includes(priority)) {
+    if (!allowedPriorities.includes(priority)) {
       return res.status(400).json({ msg: "Invalid priority value" });
     }
 
-    //  SLA logic
     const slaDays = priority === "high" ? 1 : 3;
     const slaDueDate = new Date();
     slaDueDate.setDate(slaDueDate.getDate() + slaDays);
@@ -53,53 +51,27 @@ exports.createComplaint = async (req, res) => {
     });
 
   } catch (error) {
-    res.status(500).json({
-      error: error.message,
-    });
-  }
-};
-
-// Get user Compaints 
-exports.getMyComplaints = async (req, res) => {
-  try {
-    const complaints = await Complaint.find({
-      createdBy: req.user.id
-    })
-    .populate("createdBy", "name email")
-    .populate("assignedTo", "name email")
-    .sort({ createdAt: -1 });
-
-    const complaintsWithSLA = complaints.map((c) => ({
-  ...c.toObject(),
-  slaStatus: getSLAStatus(c),
-}));
-
-res.json({
-  count: complaints.length,
-  complaints: complaintsWithSLA
-});
-    
-  } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
 
-// Get All Compaints by Admin 
-exports.getAllComplaints = async (req, res) => {
+//  GET USER COMPLAINTS
+exports.getMyComplaints = async (req, res) => {
   try {
-    const complaints = await Complaint.find()
+    const complaints = await Complaint.find({ createdBy: req.user.id })
+      .select("-__v")
       .populate("createdBy", "name email")
       .populate("assignedTo", "name email")
       .sort({ createdAt: -1 });
 
-    const complaintsWithSLA = complaints.map((c) => ({
+    const formatted = complaints.map((c) => ({
       ...c.toObject(),
       slaStatus: getSLAStatus(c),
     }));
 
     res.json({
       count: complaints.length,
-      complaints: complaintsWithSLA
+      complaints: formatted,
     });
 
   } catch (error) {
@@ -107,9 +79,54 @@ exports.getAllComplaints = async (req, res) => {
   }
 };
 
-// Admin assigns complaint to agent
+//  GET ALL (ADMIN)
+exports.getAllComplaints = async (req, res) => {
+  try {
+    const complaints = await Complaint.find()
+      .select("-__v")
+      .populate("createdBy", "name email")
+      .populate("assignedTo", "name email")
+      .sort({ createdAt: -1 });
 
+    const formatted = complaints.map((c) => ({
+      ...c.toObject(),
+      slaStatus: getSLAStatus(c),
+    }));
 
+    res.json({
+      count: complaints.length,
+      complaints: formatted,
+    });
+
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+//  GET ASSIGNED (AGENT)
+exports.getAssignedComplaints = async (req, res) => {
+  try {
+    const complaints = await Complaint.find({ assignedTo: req.user.id })
+      .select("-__v")
+      .populate("createdBy", "name email")
+      .sort({ createdAt: -1 });
+
+    const formatted = complaints.map((c) => ({
+      ...c.toObject(),
+      slaStatus: getSLAStatus(c),
+    }));
+
+    res.json({
+      count: complaints.length,
+      complaints: formatted,
+    });
+
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+//  ASSIGN COMPLAINT (ADMIN)
 exports.assignComplaint = async (req, res) => {
   try {
     const { complaintId, assignedTo } = req.body;
@@ -123,10 +140,29 @@ exports.assignComplaint = async (req, res) => {
       return res.status(404).json({ msg: "Complaint not found" });
     }
 
-    //  CHECK USER EXISTS
+    //  Prevent re-assignment
+    if (complaint.assignedTo) {
+      return res.status(400).json({
+        msg: "Complaint already assigned",
+      });
+    }
+
     const user = await User.findById(assignedTo);
     if (!user) {
       return res.status(404).json({ msg: "Assigned user not found" });
+    }
+
+    if (user.role !== "agent") {
+      return res.status(400).json({
+        msg: "Can only assign complaints to agents",
+      });
+    }
+
+    //  Prevent assigning to creator
+    if (complaint.createdBy.toString() === assignedTo) {
+      return res.status(400).json({
+        msg: "Cannot assign complaint to the creator",
+      });
     }
 
     complaint.assignedTo = assignedTo;
@@ -136,7 +172,7 @@ exports.assignComplaint = async (req, res) => {
 
     res.json({
       msg: "Complaint assigned successfully",
-      complaint
+      complaint,
     });
 
   } catch (error) {
@@ -144,39 +180,42 @@ exports.assignComplaint = async (req, res) => {
   }
 };
 
+//  UPDATE STATUS
 exports.updateStatus = async (req, res) => {
   try {
     const { complaintId, status } = req.body;
 
     const allowedStatus = ["open", "in_progress", "resolved", "closed"];
-
     if (!allowedStatus.includes(status)) {
       return res.status(400).json({ msg: "Invalid status" });
     }
 
     const complaint = await Complaint.findById(complaintId);
-
     if (!complaint) {
       return res.status(404).json({ msg: "Complaint not found" });
     }
 
-    // 🔥 LOGIC
-    if (
-      req.user.role === "agent" &&
-      complaint.assignedTo?.toString() !== req.user.id
-    ) {
-      return res.status(403).json({
-        msg: "You can only update your assigned complaints"
-      });
+    //  Agent restriction
+    if (req.user.role === "agent") {
+      if (!complaint.assignedTo) {
+        return res.status(403).json({
+          msg: "Complaint not assigned yet",
+        });
+      }
+
+      if (complaint.assignedTo.toString() !== req.user.id) {
+        return res.status(403).json({
+          msg: "You can only update your assigned complaints",
+        });
+      }
     }
 
     complaint.status = status;
-
     await complaint.save();
 
     res.json({
       msg: "Status updated successfully",
-      complaint
+      complaint,
     });
 
   } catch (error) {
@@ -184,20 +223,22 @@ exports.updateStatus = async (req, res) => {
   }
 };
 
+//  OVERDUE
 exports.getOverdueComplaints = async (req, res) => {
   try {
     const now = new Date();
 
     const complaints = await Complaint.find({
       slaDueDate: { $lt: now },
-      status: { $nin: ["resolved", "closed"] }
+      status: { $nin: ["resolved", "closed"] },
     })
-    .populate("createdBy", "name email")
-    .populate("assignedTo", "name email");
+      .select("-__v")
+      .populate("createdBy", "name email")
+      .populate("assignedTo", "name email");
 
     res.json({
       count: complaints.length,
-      complaints
+      complaints,
     });
 
   } catch (error) {
@@ -205,26 +246,28 @@ exports.getOverdueComplaints = async (req, res) => {
   }
 };
 
+//  DASHBOARD STATS
 exports.getDashboardStats = async (req, res) => {
   try {
-    const total = await Complaint.countDocuments();
-
-    const open = await Complaint.countDocuments({ status: "open" });
-    const inProgress = await Complaint.countDocuments({ status: "in_progress" });
-    const resolved = await Complaint.countDocuments({ status: "resolved" });
-
     const now = new Date();
-    const overdue = await Complaint.countDocuments({
-      slaDueDate: { $lt: now },
-      status: { $nin: ["resolved", "closed"] }
-    });
+
+    const [total, open, inProgress, resolved, overdue] = await Promise.all([
+      Complaint.countDocuments(),
+      Complaint.countDocuments({ status: "open" }),
+      Complaint.countDocuments({ status: "in_progress" }),
+      Complaint.countDocuments({ status: "resolved" }),
+      Complaint.countDocuments({
+        slaDueDate: { $lt: now },
+        status: { $nin: ["resolved", "closed"] },
+      }),
+    ]);
 
     res.json({
       total,
       open,
       inProgress,
       resolved,
-      overdue
+      overdue,
     });
 
   } catch (error) {
