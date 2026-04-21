@@ -32,8 +32,15 @@ const Login = () => {
       );
 
       localStorage.setItem("accessToken", res.data.accessToken);
+      localStorage.setItem("refreshToken", res.data.refreshToken);
 
-      navigate("/dashboard");
+      const role = res.data.user.role;
+
+if (role === "admin") {
+  navigate("/admin");
+} else {
+  navigate("/dashboard");
+}
 
     } catch (err) {
       setError(err.response?.data?.msg || "Login failed");
@@ -70,7 +77,7 @@ const Login = () => {
             required
           />
 
-          <button className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition">
+          <button  className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition">
             Login
           </button>
         </form>

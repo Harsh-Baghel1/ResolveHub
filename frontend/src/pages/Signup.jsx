@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import axiosInstance from "../api/axiosInstance";
 import { useDispatch } from "react-redux";
+import axiosInstance from "../api/axiosInstance";
 import { loginSuccess } from "../features/auth/authSlice";
 import AuthLayout from "../layouts/AuthLayout";
 
@@ -16,38 +16,51 @@ const Signup = () => {
   });
 
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (e) =>
     setForm({ ...form, [e.target.name]: e.target.value });
 
   const handleSignup = async (e) => {
     e.preventDefault();
+    setError("");
+    setLoading(true);
 
     try {
       // 1. Register user
       await axiosInstance.post("/auth/register", form);
 
-      // 2. Login automatically
-      const res = await axiosInstance.post("/auth/login", {
+      // 2. Auto login
+      const loginRes = await axiosInstance.post("/auth/login", {
         email: form.email,
         password: form.password,
       });
 
-      // 3. Save to Redux
+      const { user, accessToken, refreshToken } = loginRes.data;
+
+      //  3. Save tokens
+      localStorage.setItem("accessToken", accessToken);
+      localStorage.setItem("refreshToken", refreshToken);
+
+      //  4. Update Redux
       dispatch(
         loginSuccess({
-          user: res.data.user,
-          accessToken: res.data.accessToken,
+          user,
+          accessToken,
         })
       );
 
-      localStorage.setItem("accessToken", res.data.accessToken);
-
-      // 4. Redirect
-      navigate("/dashboard");
+      //  5. Redirect based on role
+      if (user.role === "admin") {
+        navigate("/admin");
+      } else {
+        navigate("/dashboard");
+      }
 
     } catch (err) {
       setError(err.response?.data?.msg || "Signup failed");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -89,8 +102,12 @@ const Signup = () => {
             required
           />
 
-          <button className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition">
-            Signup
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
+          >
+            {loading ? "Creating..." : "Signup"}
           </button>
         </form>
 

@@ -3,6 +3,7 @@ import Login from "../pages/Login";
 import Signup from "../pages/Signup";
 import Dashboard from "../pages/Dashboard";
 import AdminDashboard from "../pages/AdminDashboard";
+import CreateComplaint from "../pages/CreateComplaint";
 
 import ProtectedRoute from "../components/ProtectedRoute";
 import RoleRoute from "../components/RoleRoute";
@@ -11,6 +12,8 @@ const AppRoutes = () => {
   return (
     <BrowserRouter>
       <Routes>
+
+        {/* AUTH */}
         <Route path="/" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
 
@@ -37,6 +40,19 @@ const AppRoutes = () => {
             </ProtectedRoute>
           }
         />
+
+        {/* ✅ FIXED: CREATE COMPLAINT ROUTE */}
+        <Route
+          path="/create-complaint"
+          element={
+            <ProtectedRoute>
+              <RoleRoute allowedRoles={["user"]}>
+                <CreateComplaint />
+              </RoleRoute>
+            </ProtectedRoute>
+          }
+        />
+
       </Routes>
     </BrowserRouter>
   );

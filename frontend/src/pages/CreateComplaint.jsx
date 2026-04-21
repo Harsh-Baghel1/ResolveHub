@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { createComplaint } from "../../features/complaint/complaintSlice";
+import { createComplaint } from "../features/complaint/complaintSlice";
 
 const CreateComplaint = () => {
   const dispatch = useDispatch();
