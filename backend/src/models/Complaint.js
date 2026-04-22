@@ -1,5 +1,4 @@
 const mongoose = require("mongoose");
-
 const complaintSchema = new mongoose.Schema(
   {
     title: {
@@ -53,6 +52,11 @@ const complaintSchema = new mongoose.Schema(
     slaDueDate: {
       type: Date,
     },
+
+    ticketId: {
+  type: String,
+  unique: true
+},
 
     attachments: [
       {

@@ -4,7 +4,7 @@ import Signup from "../pages/Signup";
 import Dashboard from "../pages/Dashboard";
 import AdminDashboard from "../pages/AdminDashboard";
 import CreateComplaint from "../pages/CreateComplaint";
-
+import ComplaintDetail from "../pages/ComplaintDetail";
 import ProtectedRoute from "../components/ProtectedRoute";
 import RoleRoute from "../components/RoleRoute";
 
@@ -52,6 +52,15 @@ const AppRoutes = () => {
             </ProtectedRoute>
           }
         />
+
+        <Route
+  path="/complaint/:id"
+  element={
+    <ProtectedRoute>
+      <ComplaintDetail />
+    </ProtectedRoute>
+  }
+/>
 
       </Routes>
     </BrowserRouter>

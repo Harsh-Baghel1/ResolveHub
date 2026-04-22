@@ -3,7 +3,7 @@ const router = express.Router();
 
 const protect = require("../middleware/authMiddleware");
 const authorizeRoles = require("../middleware/roleMiddleware");
-
+const { getComplaintById } = require("../controllers/complaintController");
 const {
   createComplaint,
   getMyComplaints,
@@ -30,5 +30,5 @@ router.put("/status", protect, authorizeRoles("admin", "agent"), updateStatus);
 
 // AGENT
 router.get("/assigned", protect, authorizeRoles("agent"), getAssignedComplaints);
-
+router.get("/:id", protect, getComplaintById);
 module.exports = router;

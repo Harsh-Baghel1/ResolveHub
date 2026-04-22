@@ -26,7 +26,7 @@ const App = () => {
           })
         );
 
-      } catch (error) {
+      } catch  {
         console.log("User not authenticated");
 
         //  IMPORTANT FIX

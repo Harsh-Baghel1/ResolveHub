@@ -28,14 +28,46 @@ exports.createComplaint = async (req, res) => {
     }
 
     const allowedPriorities = ["low", "medium", "high"];
+
     if (!allowedPriorities.includes(priority)) {
-      return res.status(400).json({ msg: "Invalid priority value" });
+      return res.status(400).json({
+        msg: "Invalid priority value",
+      });
     }
 
+    // ==========================
+    // SLA DATE
+    // ==========================
     const slaDays = priority === "high" ? 1 : 3;
+
     const slaDueDate = new Date();
     slaDueDate.setDate(slaDueDate.getDate() + slaDays);
 
+    // ==========================
+    // GENERATE TICKET ID
+    // RH-1001 / RH-1002
+    // ==========================
+    const lastComplaint = await Complaint.findOne()
+      .sort({ createdAt: -1 })
+      .select("ticketId");
+
+    let nextNumber = 1001;
+
+    if (lastComplaint?.ticketId) {
+      const lastNumber = parseInt(
+        lastComplaint.ticketId.split("-")[1]
+      );
+
+      if (!isNaN(lastNumber)) {
+        nextNumber = lastNumber + 1;
+      }
+    }
+
+    const ticketId = `RH-${nextNumber}`;
+
+    // ==========================
+    // CREATE COMPLAINT
+    // ==========================
     const complaint = await Complaint.create({
       title,
       description,
@@ -43,6 +75,7 @@ exports.createComplaint = async (req, res) => {
       priority,
       createdBy: req.user.id,
       slaDueDate,
+      ticketId,
     });
 
     res.status(201).json({
@@ -51,7 +84,9 @@ exports.createComplaint = async (req, res) => {
     });
 
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({
+      error: error.message,
+    });
   }
 };
 
