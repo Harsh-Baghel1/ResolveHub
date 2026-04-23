@@ -11,7 +11,7 @@ import {
   Loader2,
 } from "lucide-react";
 
-import { createComplaint } from "../features/complaint/complaintSlice";
+import { createComplaint } from "../../features/complaint/complaintSlice";
 
 const CreateComplaint = () => {
   const dispatch = useDispatch();

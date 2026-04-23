@@ -11,14 +11,18 @@ const messageSchema = new mongoose.Schema(
       ref: "User",
     },
     status: {
-  type: String,
-  enum: ["sent", "delivered", "seen"],
-  default: "sent"
-},
-    message: String,
+      type: String,
+      enum: ["sent", "delivered", "seen"],
+      default: "sent",
+    },
+    message: {
+      type: String,
+      trim: true,
+    },
   },
-  
   { timestamps: true }
 );
 
-module.exports = mongoose.model("Message", messageSchema);
+module.exports =
+  mongoose.models.Message ||
+  mongoose.model("Message", messageSchema);

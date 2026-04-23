@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useDispatch } from "react-redux";
-import axiosInstance from "../api/axiosInstance";
-import { loginSuccess } from "../features/auth/authSlice";
-import AuthLayout from "../layouts/AuthLayout";
+import axiosInstance from "../../api/axiosInstance";
+import { loginSuccess } from "../../features/auth/authSlice";
+import AuthLayout from "../../layouts/AuthLayout";
 
 const Signup = () => {
   const navigate = useNavigate();

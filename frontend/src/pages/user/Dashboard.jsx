@@ -1,5 +1,3 @@
-// src/pages/Dashboard.jsx
-
 import { useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
@@ -16,9 +14,9 @@ import {
   Loader2,
 } from "lucide-react";
 
-import { logout } from "../features/auth/authSlice";
-import { fetchComplaints } from "../features/complaint/complaintSlice";
-import ComplaintsList from "../components/complaints/ComplaintsList";
+import { logout } from "../../features/auth/authSlice";
+import { fetchComplaints } from "../../features/complaint/complaintSlice";
+import ComplaintsList from "../../components/complaint/ComplaintsList";
 
 const Dashboard = () => {
   const dispatch = useDispatch();

@@ -1,4 +1,4 @@
-const Message = require("../models/message");
+const Message = require("../models/Message");
 
 exports.getMessagesByComplaint = async (req, res) => {
   try {

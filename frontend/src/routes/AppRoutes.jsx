@@ -1,12 +1,12 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Login from "../pages/Login";
-import Signup from "../pages/Signup";
-import Dashboard from "../pages/Dashboard";
-import AdminDashboard from "../pages/AdminDashboard";
-import CreateComplaint from "../pages/CreateComplaint";
-import ComplaintDetail from "../pages/ComplaintDetail";
-import ProtectedRoute from "../components/ProtectedRoute";
-import RoleRoute from "../components/RoleRoute";
+import Login from "../pages/auth/Login";
+import Signup from "../pages/auth/Signup";
+import Dashboard from "../pages/user/Dashboard";
+import AdminDashboard from "../pages/admin/AdminDashboard";
+import CreateComplaint from "../pages/user/CreateComplaint";
+import ComplaintDetail from "../pages/user/ComplaintDetail";
+import ProtectedRoute from "../routes/ProtectedRoute";
+import RoleRoute from "../routes/RoleRoute";
 
 const AppRoutes = () => {
   return (

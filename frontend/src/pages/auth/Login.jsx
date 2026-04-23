@@ -1,19 +1,23 @@
 import { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Navigate, useNavigate, Link } from "react-router-dom";
-import axiosInstance from "../api/axiosInstance";
-import { loginSuccess } from "../features/auth/authSlice";
-import AuthLayout from "../layouts/AuthLayout";
+import axiosInstance from "../../api/axiosInstance";
+import { loginSuccess } from "../../features/auth/authSlice";
+import AuthLayout from "../../layouts/AuthLayout";
 
 const Login = () => {
-  const { accessToken } = useSelector((state) => state.auth);
+  const { accessToken,user  } = useSelector((state) => state.auth);
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
   const [form, setForm] = useState({ email: "", password: "" });
   const [error, setError] = useState("");
 
-  if (accessToken) return <Navigate to="/dashboard" replace />;
+  if (accessToken && user) {
+  if (user.role === "admin") return <Navigate to="/admin" replace />;
+  if (user.role === "agent") return <Navigate to="/agent" replace />;
+  return <Navigate to="/dashboard" replace />;
+}
 
   const handleChange = (e) =>
     setForm({ ...form, [e.target.name]: e.target.value });

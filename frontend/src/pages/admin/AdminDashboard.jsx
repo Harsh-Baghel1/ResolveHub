@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo  } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import axiosInstance from "../api/axiosInstance";
-import { logout } from "../features/auth/authSlice";
+import axiosInstance from "../../api/axiosInstance";
+import { logout } from "../../features/auth/authSlice";
 
 import {
   LayoutDashboard,
@@ -58,6 +58,8 @@ const AdminDashboard = () => {
     fetchData();
   }, []);
 
+  const [activeFilter, setActiveFilter] = useState("total");
+
   // ====================================
   // LOGOUT
   // ====================================
@@ -90,6 +92,35 @@ const AdminDashboard = () => {
         return "bg-blue-100 text-blue-700";
     }
   };
+
+  const filteredComplaints = useMemo(() => {
+  switch (activeFilter) {
+    case "open":
+      return complaints.filter(
+        (item) => item.status === "open"
+      );
+
+    case "in_progress":
+      return complaints.filter(
+        (item) => item.status === "in_progress"
+      );
+
+    case "resolved":
+      return complaints.filter(
+        (item) => item.status === "resolved"
+      );
+
+    case "overdue":
+      return complaints.filter(
+        (item) =>
+          item.slaStatus === "overdue"
+      );
+
+    default:
+      return complaints;
+  }
+}, [activeFilter, complaints]);
+
 
   if (loading) {
     return (
@@ -181,44 +212,59 @@ const AdminDashboard = () => {
           {/* ====================================
               STATS
           ==================================== */}
-          <div className="grid lg:grid-cols-5 md:grid-cols-2 gap-5 mb-6">
+         <div className="grid lg:grid-cols-5 md:grid-cols-2 gap-5 mb-6">
 
-            <div className="bg-white p-5 rounded-2xl shadow-sm">
-              <p className="text-gray-500">Total</p>
-              <h3 className="text-3xl font-bold mt-2">
-                {stats.total}
-              </h3>
-            </div>
+  <div
+    onClick={() => setActiveFilter("total")}
+    className="bg-white p-5 rounded-2xl shadow-sm cursor-pointer hover:shadow-md transition"
+  >
+    <p className="text-gray-500">Total</p>
+    <h3 className="text-3xl font-bold mt-2">
+      {stats.total}
+    </h3>
+  </div>
 
-            <div className="bg-white p-5 rounded-2xl shadow-sm">
-              <p className="text-gray-500">Open</p>
-              <h3 className="text-3xl font-bold mt-2 text-orange-500">
-                {stats.open}
-              </h3>
-            </div>
+  <div
+    onClick={() => setActiveFilter("open")}
+    className="bg-white p-5 rounded-2xl shadow-sm cursor-pointer hover:shadow-md transition"
+  >
+    <p className="text-gray-500">Open</p>
+    <h3 className="text-3xl font-bold mt-2 text-orange-500">
+      {stats.open}
+    </h3>
+  </div>
 
-            <div className="bg-white p-5 rounded-2xl shadow-sm">
-              <p className="text-gray-500">In Progress</p>
-              <h3 className="text-3xl font-bold mt-2 text-purple-500">
-                {stats.inProgress}
-              </h3>
-            </div>
+  <div
+    onClick={() => setActiveFilter("in_progress")}
+    className="bg-white p-5 rounded-2xl shadow-sm cursor-pointer hover:shadow-md transition"
+  >
+    <p className="text-gray-500">In Progress</p>
+    <h3 className="text-3xl font-bold mt-2 text-purple-500">
+      {stats.inProgress}
+    </h3>
+  </div>
 
-            <div className="bg-white p-5 rounded-2xl shadow-sm">
-              <p className="text-gray-500">Resolved</p>
-              <h3 className="text-3xl font-bold mt-2 text-green-500">
-                {stats.resolved}
-              </h3>
-            </div>
+  <div
+    onClick={() => setActiveFilter("resolved")}
+    className="bg-white p-5 rounded-2xl shadow-sm cursor-pointer hover:shadow-md transition"
+  >
+    <p className="text-gray-500">Resolved</p>
+    <h3 className="text-3xl font-bold mt-2 text-green-500">
+      {stats.resolved}
+    </h3>
+  </div>
 
-            <div className="bg-white p-5 rounded-2xl shadow-sm">
-              <p className="text-gray-500">Overdue</p>
-              <h3 className="text-3xl font-bold mt-2 text-red-500">
-                {stats.overdue}
-              </h3>
-            </div>
+  <div
+    onClick={() => setActiveFilter("overdue")}
+    className="bg-white p-5 rounded-2xl shadow-sm cursor-pointer hover:shadow-md transition"
+  >
+    <p className="text-gray-500">Overdue</p>
+    <h3 className="text-3xl font-bold mt-2 text-red-500">
+      {stats.overdue}
+    </h3>
+  </div>
 
-          </div>
+</div>
 
           {/* ====================================
               RECENT COMPLAINTS
@@ -240,7 +286,7 @@ const AdminDashboard = () => {
 
             <div className="space-y-4">
 
-              {complaints.slice(0, 6).map((item) => (
+              {filteredComplaints.slice(0, 6).map((item) => (
                 <div
                   key={item._id}
                   onClick={() => navigate(`/complaint/${item._id}`)}
