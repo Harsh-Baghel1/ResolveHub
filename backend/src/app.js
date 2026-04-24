@@ -7,6 +7,13 @@ const messageRoutes = require("./routes/messageRoutes");
 
 const protect = require("./middleware/authMiddleware");
 const authorizeRoles = require("./middleware/roleMiddleware");
+const adminRoutes = require("./routes/adminRoutes");
+
+
+const {
+  notFound,
+  errorHandler,
+} = require("./middleware/errorMiddleware");
 
 const app = express();
 
@@ -18,6 +25,7 @@ app.use(express.json());
 app.use("/api/auth", authRoutes);
 app.use("/api/complaints", complaintRoutes);
 app.use("/api/messages", messageRoutes);
+app.use("/api/admin", adminRoutes);
 
 // Test Route
 app.get("/api/test", protect, (req, res) => {
@@ -45,12 +53,8 @@ app.get("/", (req, res) => {
   res.send("ResolveHub API running...");
 });
 
-// 404
-app.use((req, res) => {
-  res.status(404).json({
-    success: false,
-    message: "Route not found",
-  });
-});
+// Middleware should be LAST
+app.use(notFound);
+app.use(errorHandler);
 
 module.exports = app;

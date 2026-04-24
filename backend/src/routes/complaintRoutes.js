@@ -3,32 +3,50 @@ const router = express.Router();
 
 const protect = require("../middleware/authMiddleware");
 const authorizeRoles = require("../middleware/roleMiddleware");
-const { getComplaintById } = require("../controllers/complaintController");
+
 const {
   createComplaint,
   getMyComplaints,
-  getAllComplaints,
-  assignComplaint,
+  getComplaintById,
   updateStatus,
   getOverdueComplaints,
-  getDashboardStats,
   getAssignedComplaints
 } = require("../controllers/complaintController");
 
-//  USER
+
+// USER
 router.post("/", protect, createComplaint);
 router.get("/my", protect, getMyComplaints);
 
-//  ADMIN
-router.get("/all", protect, authorizeRoles("admin"), getAllComplaints);
-router.put("/assign", protect, authorizeRoles("admin"), assignComplaint);
-router.get("/overdue", protect, authorizeRoles("admin"), getOverdueComplaints);
-router.get("/stats", protect, authorizeRoles("admin"), getDashboardStats);
-
-//  ADMIN + AGENT
-router.put("/status", protect, authorizeRoles("admin", "agent"), updateStatus);
 
 // AGENT
-router.get("/assigned", protect, authorizeRoles("agent"), getAssignedComplaints);
+router.get(
+  "/assigned",
+  protect,
+  authorizeRoles("agent"),
+  getAssignedComplaints
+);
+
+
+// ADMIN + AGENT
+router.put(
+  "/status",
+  protect,
+  authorizeRoles("admin", "agent"),
+  updateStatus
+);
+
+
+// OPTIONAL ADMIN
+router.get(
+  "/overdue",
+  protect,
+  authorizeRoles("admin"),
+  getOverdueComplaints
+);
+
+
+// COMMON
 router.get("/:id", protect, getComplaintById);
+
 module.exports = router;

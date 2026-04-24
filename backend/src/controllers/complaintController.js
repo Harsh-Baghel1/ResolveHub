@@ -1,20 +1,6 @@
 const Complaint = require("../models/Complaint");
 const User = require("../models/User");
 
-//  SLA STATUS HELPER
-const getSLAStatus = (complaint) => {
-  const now = new Date();
-
-  if (["resolved", "closed"].includes(complaint.status)) {
-    return "completed";
-  }
-
-  if (complaint.slaDueDate && complaint.slaDueDate < now) {
-    return "overdue";
-  }
-
-  return "within_sla";
-};
 
 //  CREATE COMPLAINT
 exports.createComplaint = async (req, res) => {
@@ -89,7 +75,7 @@ exports.createComplaint = async (req, res) => {
     });
   }
 };
-
+//Get complaintbyid
 exports.getComplaintById = async (req, res) => {
   try {
     const complaint = await Complaint.findById(req.params.id)
@@ -105,8 +91,7 @@ exports.getComplaintById = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
-
-//  GET USER COMPLAINTS
+//  GET USER COMPLAINTS 
 exports.getMyComplaints = async (req, res) => {
   try {
     const complaints = await Complaint.find({ createdBy: req.user.id })
@@ -129,31 +114,6 @@ exports.getMyComplaints = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
-
-//  GET ALL (ADMIN)
-exports.getAllComplaints = async (req, res) => {
-  try {
-    const complaints = await Complaint.find()
-      .select("-__v")
-      .populate("createdBy", "name email")
-      .populate("assignedTo", "name email")
-      .sort({ createdAt: -1 });
-
-    const formatted = complaints.map((c) => ({
-      ...c.toObject(),
-      slaStatus: getSLAStatus(c),
-    }));
-
-    res.json({
-      count: complaints.length,
-      complaints: formatted,
-    });
-
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
 //  GET ASSIGNED (AGENT)
 exports.getAssignedComplaints = async (req, res) => {
   try {
@@ -176,7 +136,6 @@ exports.getAssignedComplaints = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
-
 //  ASSIGN COMPLAINT (ADMIN)
 exports.assignComplaint = async (req, res) => {
   try {
@@ -230,7 +189,6 @@ exports.assignComplaint = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
-
 //  UPDATE STATUS
 exports.updateStatus = async (req, res) => {
   try {
@@ -273,7 +231,6 @@ exports.updateStatus = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
-
 //  OVERDUE
 exports.getOverdueComplaints = async (req, res) => {
   try {
@@ -297,31 +254,3 @@ exports.getOverdueComplaints = async (req, res) => {
   }
 };
 
-//  DASHBOARD STATS
-exports.getDashboardStats = async (req, res) => {
-  try {
-    const now = new Date();
-
-    const [total, open, inProgress, resolved, overdue] = await Promise.all([
-      Complaint.countDocuments(),
-      Complaint.countDocuments({ status: "open" }),
-      Complaint.countDocuments({ status: "in_progress" }),
-      Complaint.countDocuments({ status: "resolved" }),
-      Complaint.countDocuments({
-        slaDueDate: { $lt: now },
-        status: { $nin: ["resolved", "closed"] },
-      }),
-    ]);
-
-    res.json({
-      total,
-      open,
-      inProgress,
-      resolved,
-      overdue,
-    });
-
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
