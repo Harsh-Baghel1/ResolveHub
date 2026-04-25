@@ -1,10 +1,31 @@
+// backend/src/routes/messageRoutes.js
+
 const express = require("express");
 const router = express.Router();
 
-const { getMessagesByComplaint } = require("../controllers/messageController");
 const protect = require("../middleware/authMiddleware");
 
-// GET chat history
-router.get("/:complaintId", protect, getMessagesByComplaint);
+const {
+  getMessagesByComplaint,
+  markMessageSeen,
+} = require("../controllers/messageController");
+
+// ======================================
+// PROTECTED ROUTES
+// ======================================
+
+// Get Chat Messages By Complaint
+router.get(
+  "/:complaintId",
+  protect,
+  getMessagesByComplaint
+);
+
+// Mark Message As Seen
+router.patch(
+  "/seen/:id",
+  protect,
+  markMessageSeen
+);
 
 module.exports = router;

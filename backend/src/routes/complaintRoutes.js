@@ -1,3 +1,5 @@
+// backend/src/routes/complaintRoutes.js
+
 const express = require("express");
 const router = express.Router();
 
@@ -9,17 +11,32 @@ const {
   getMyComplaints,
   getComplaintById,
   updateStatus,
-  getOverdueComplaints,
-  getAssignedComplaints
+  getAssignedComplaints,
 } = require("../controllers/complaintController");
 
+// ======================================
+// USER ROUTES
+// ======================================
 
-// USER
-router.post("/", protect, createComplaint);
-router.get("/my", protect, getMyComplaints);
+// Create Complaint
+router.post(
+  "/",
+  protect,
+  createComplaint
+);
 
+// My Complaints
+router.get(
+  "/my",
+  protect,
+  getMyComplaints
+);
 
-// AGENT
+// ======================================
+// AGENT ROUTES
+// ======================================
+
+// Assigned Complaints
 router.get(
   "/assigned",
   protect,
@@ -27,26 +44,30 @@ router.get(
   getAssignedComplaints
 );
 
+// ======================================
+// ADMIN + AGENT ROUTES
+// ======================================
 
-// ADMIN + AGENT
-router.put(
+// Update Complaint Status
+router.patch(
   "/status",
   protect,
-  authorizeRoles("admin", "agent"),
+  authorizeRoles(
+    "admin",
+    "agent"
+  ),
   updateStatus
 );
 
+// ======================================
+// COMMON ROUTES
+// ======================================
 
-// OPTIONAL ADMIN
+// Get Complaint By ID
 router.get(
-  "/overdue",
+  "/:id",
   protect,
-  authorizeRoles("admin"),
-  getOverdueComplaints
+  getComplaintById
 );
-
-
-// COMMON
-router.get("/:id", protect, getComplaintById);
 
 module.exports = router;

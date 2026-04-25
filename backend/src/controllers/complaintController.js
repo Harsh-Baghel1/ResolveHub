@@ -1,256 +1,537 @@
-const Complaint = require("../models/Complaint");
+ Complaint = require("../models/Complaint");
 const User = require("../models/User");
 
+const {
+  generateTicketId,
+} = require("../services/ticketService");
 
-//  CREATE COMPLAINT
-exports.createComplaint = async (req, res) => {
-  try {
-    const { title, description, category, priority = "medium" } = req.body;
+const {
+  sendMail,
+} = require("../services/mailService");
 
-    if (!title || !description || !category) {
-      return res.status(400).json({
-        msg: "Title, description, and category are required",
-      });
-    }
+// ======================================
+// SLA STATUS HELPER
+// ======================================
+const getSLAStatus = (
+  complaint
+) => {
+  const now = new Date();
 
-    const allowedPriorities = ["low", "medium", "high"];
+  if (
+    ["resolved", "closed"].includes(
+      complaint.status
+    )
+  ) {
+    return "completed";
+  }
 
-    if (!allowedPriorities.includes(priority)) {
-      return res.status(400).json({
-        msg: "Invalid priority value",
-      });
-    }
+  if (
+    complaint.slaDueDate &&
+    complaint.slaDueDate < now
+  ) {
+    return "overdue";
+  }
 
-    // ==========================
-    // SLA DATE
-    // ==========================
-    const slaDays = priority === "high" ? 1 : 3;
+  return "within_sla";
+};
 
-    const slaDueDate = new Date();
-    slaDueDate.setDate(slaDueDate.getDate() + slaDays);
+// ======================================
+// FORMAT COMPLAINT
+// ======================================
+const formatComplaint = (
+  complaint
+) => ({
+  ...complaint.toObject(),
+  slaStatus:
+    getSLAStatus(
+      complaint
+    ),
+});
 
-    // ==========================
-    // GENERATE TICKET ID
-    // RH-1001 / RH-1002
-    // ==========================
-    const lastComplaint = await Complaint.findOne()
-      .sort({ createdAt: -1 })
-      .select("ticketId");
+// ======================================
+// CREATE COMPLAINT
+// ======================================
+exports.createComplaint =
+  async (
+    req,
+    res,
+    next
+  ) => {
+    try {
+      const {
+        title,
+        description,
+        category,
+        priority =
+          "medium",
+      } = req.body;
 
-    let nextNumber = 1001;
+      if (
+        !title ||
+        !description ||
+        !category
+      ) {
+        return res
+          .status(400)
+          .json({
+            success:
+              false,
+            message:
+              "Title, description and category required",
+          });
+      }
 
-    if (lastComplaint?.ticketId) {
-      const lastNumber = parseInt(
-        lastComplaint.ticketId.split("-")[1]
+      const allowedPriorities =
+        [
+          "low",
+          "medium",
+          "high",
+        ];
+
+      if (
+        !allowedPriorities.includes(
+          priority
+        )
+      ) {
+        return res
+          .status(400)
+          .json({
+            success:
+              false,
+            message:
+              "Invalid priority",
+          });
+      }
+
+      // SLA Logic
+      const slaDays =
+        priority ===
+        "high"
+          ? 1
+          : 3;
+
+      const slaDueDate =
+        new Date();
+
+      slaDueDate.setDate(
+        slaDueDate.getDate() +
+          slaDays
       );
 
-      if (!isNaN(lastNumber)) {
-        nextNumber = lastNumber + 1;
-      }
-    }
+      const ticketId =
+        await generateTicketId();
 
-    const ticketId = `RH-${nextNumber}`;
+      const complaint =
+        await Complaint.create(
+          {
+            title,
+            description,
+            category,
+            priority,
+            createdBy:
+              req.user.id,
+            slaDueDate,
+            ticketId,
+          }
+        );
 
-    // ==========================
-    // CREATE COMPLAINT
-    // ==========================
-    const complaint = await Complaint.create({
-      title,
-      description,
-      category,
-      priority,
-      createdBy: req.user.id,
-      slaDueDate,
-      ticketId,
-    });
+      const user =
+        await User.findById(
+          req.user.id
+        );
 
-    res.status(201).json({
-      msg: "Complaint created successfully",
-      complaint,
-    });
-
-  } catch (error) {
-    res.status(500).json({
-      error: error.message,
-    });
-  }
-};
-//Get complaintbyid
-exports.getComplaintById = async (req, res) => {
-  try {
-    const complaint = await Complaint.findById(req.params.id)
-      .populate("createdBy", "name email")
-      .populate("assignedTo", "name email");
-
-    if (!complaint) {
-      return res.status(404).json({ msg: "Complaint not found" });
-    }
-
-    res.json(complaint);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-//  GET USER COMPLAINTS 
-exports.getMyComplaints = async (req, res) => {
-  try {
-    const complaints = await Complaint.find({ createdBy: req.user.id })
-      .select("-__v")
-      .populate("createdBy", "name email")
-      .populate("assignedTo", "name email")
-      .sort({ createdAt: -1 });
-
-    const formatted = complaints.map((c) => ({
-      ...c.toObject(),
-      slaStatus: getSLAStatus(c),
-    }));
-
-    res.json({
-      count: complaints.length,
-      complaints: formatted,
-    });
-
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-//  GET ASSIGNED (AGENT)
-exports.getAssignedComplaints = async (req, res) => {
-  try {
-    const complaints = await Complaint.find({ assignedTo: req.user.id })
-      .select("-__v")
-      .populate("createdBy", "name email")
-      .sort({ createdAt: -1 });
-
-    const formatted = complaints.map((c) => ({
-      ...c.toObject(),
-      slaStatus: getSLAStatus(c),
-    }));
-
-    res.json({
-      count: complaints.length,
-      complaints: formatted,
-    });
-
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-//  ASSIGN COMPLAINT (ADMIN)
-exports.assignComplaint = async (req, res) => {
-  try {
-    const { complaintId, assignedTo } = req.body;
-
-    if (!complaintId || !assignedTo) {
-      return res.status(400).json({ msg: "Missing required fields" });
-    }
-
-    const complaint = await Complaint.findById(complaintId);
-    if (!complaint) {
-      return res.status(404).json({ msg: "Complaint not found" });
-    }
-
-    //  Prevent re-assignment
-    if (complaint.assignedTo) {
-      return res.status(400).json({
-        msg: "Complaint already assigned",
-      });
-    }
-
-    const user = await User.findById(assignedTo);
-    if (!user) {
-      return res.status(404).json({ msg: "Assigned user not found" });
-    }
-
-    if (user.role !== "agent") {
-      return res.status(400).json({
-        msg: "Can only assign complaints to agents",
-      });
-    }
-
-    //  Prevent assigning to creator
-    if (complaint.createdBy.toString() === assignedTo) {
-      return res.status(400).json({
-        msg: "Cannot assign complaint to the creator",
-      });
-    }
-
-    complaint.assignedTo = assignedTo;
-    complaint.status = "in_progress";
-
-    await complaint.save();
-
-    res.json({
-      msg: "Complaint assigned successfully",
-      complaint,
-    });
-
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-//  UPDATE STATUS
-exports.updateStatus = async (req, res) => {
-  try {
-    const { complaintId, status } = req.body;
-
-    const allowedStatus = ["open", "in_progress", "resolved", "closed"];
-    if (!allowedStatus.includes(status)) {
-      return res.status(400).json({ msg: "Invalid status" });
-    }
-
-    const complaint = await Complaint.findById(complaintId);
-    if (!complaint) {
-      return res.status(404).json({ msg: "Complaint not found" });
-    }
-
-    //  Agent restriction
-    if (req.user.role === "agent") {
-      if (!complaint.assignedTo) {
-        return res.status(403).json({
-          msg: "Complaint not assigned yet",
-        });
+      if (
+        user?.email
+      ) {
+        await sendMail(
+          user.email,
+          "Complaint Created",
+          `Your complaint ${ticketId} has been created successfully.`
+        );
       }
 
-      if (complaint.assignedTo.toString() !== req.user.id) {
-        return res.status(403).json({
-          msg: "You can only update your assigned complaints",
-        });
-      }
+      res.status(201).json(
+        {
+          success:
+            true,
+          message:
+            "Complaint created successfully",
+          data:
+            complaint,
+        }
+      );
+    } catch (error) {
+      next(error);
     }
+  };
 
-    complaint.status = status;
-    await complaint.save();
+// ======================================
+// GET COMPLAINT BY ID
+// Security:
+// Admin = all
+// User = own complaint
+// Agent = assigned complaint
+// ======================================
+exports.getComplaintById =
+  async (
+    req,
+    res,
+    next
+  ) => {
+    try {
+      const complaint =
+        await Complaint.findById(
+          req.params.id
+        )
+          .populate(
+            "createdBy",
+            "name email"
+          )
+          .populate(
+            "assignedTo",
+            "name email"
+          );
 
-    res.json({
-      msg: "Status updated successfully",
-      complaint,
-    });
+      if (!complaint) {
+        return res
+          .status(404)
+          .json({
+            success:
+              false,
+            message:
+              "Complaint not found",
+          });
+      }
 
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-//  OVERDUE
-exports.getOverdueComplaints = async (req, res) => {
-  try {
-    const now = new Date();
+      const role =
+        req.user.role;
 
-    const complaints = await Complaint.find({
-      slaDueDate: { $lt: now },
-      status: { $nin: ["resolved", "closed"] },
-    })
-      .select("-__v")
-      .populate("createdBy", "name email")
-      .populate("assignedTo", "name email");
+      const userId =
+        req.user.id;
 
-    res.json({
-      count: complaints.length,
-      complaints,
-    });
+      const isAdmin =
+        role ===
+        "admin";
 
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
+      const isOwner =
+        complaint.createdBy._id.toString() ===
+        userId;
 
+      const isAssignedAgent =
+        complaint.assignedTo &&
+        complaint.assignedTo._id.toString() ===
+          userId;
+
+      if (
+        !isAdmin &&
+        !isOwner &&
+        !isAssignedAgent
+      ) {
+        return res
+          .status(403)
+          .json({
+            success:
+              false,
+            message:
+              "Access denied",
+          });
+      }
+
+      res.json({
+        success:
+          true,
+        data:
+          formatComplaint(
+            complaint
+          ),
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+// ======================================
+// GET MY COMPLAINTS
+// ======================================
+exports.getMyComplaints =
+  async (
+    req,
+    res,
+    next
+  ) => {
+    try {
+      const complaints =
+        await Complaint.find(
+          {
+            createdBy:
+              req.user.id,
+          }
+        )
+          .populate(
+            "createdBy",
+            "name email"
+          )
+          .populate(
+            "assignedTo",
+            "name email"
+          )
+          .sort({
+            createdAt: -1,
+          });
+
+      res.json({
+        success:
+          true,
+        count:
+          complaints.length,
+        data:
+          complaints.map(
+            formatComplaint
+          ),
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+// ======================================
+// GET ASSIGNED COMPLAINTS
+// AGENT ONLY
+// ======================================
+exports.getAssignedComplaints =
+  async (
+    req,
+    res,
+    next
+  ) => {
+    try {
+      const complaints =
+        await Complaint.find(
+          {
+            assignedTo:
+              req.user.id,
+          }
+        )
+          .populate(
+            "createdBy",
+            "name email"
+          )
+          .sort({
+            createdAt: -1,
+          });
+
+      res.json({
+        success:
+          true,
+        count:
+          complaints.length,
+        data:
+          complaints.map(
+            formatComplaint
+          ),
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+// ======================================
+// UPDATE STATUS
+// Admin = any status
+// Agent = cannot close
+// Agent = only assigned complaint
+// ======================================
+exports.updateStatus =
+  async (
+    req,
+    res,
+    next
+  ) => {
+    try {
+      const {
+        complaintId,
+        status,
+      } = req.body;
+
+      const allowedStatus =
+        [
+          "open",
+          "in_progress",
+          "resolved",
+          "closed",
+        ];
+
+      if (
+        !allowedStatus.includes(
+          status
+        )
+      ) {
+        return res
+          .status(400)
+          .json({
+            success:
+              false,
+            message:
+              "Invalid status",
+          });
+      }
+
+      const complaint =
+        await Complaint.findById(
+          complaintId
+        );
+
+      if (!complaint) {
+        return res
+          .status(404)
+          .json({
+            success:
+              false,
+            message:
+              "Complaint not found",
+          });
+      }
+
+      // Agent Rules
+      if (
+        req.user.role ===
+        "agent"
+      ) {
+        if (
+          !complaint.assignedTo
+        ) {
+          return res
+            .status(403)
+            .json({
+              success:
+                false,
+              message:
+                "Complaint not assigned",
+            });
+        }
+
+        if (
+          complaint.assignedTo.toString() !==
+          req.user.id
+        ) {
+          return res
+            .status(403)
+            .json({
+              success:
+                false,
+              message:
+                "Only assigned complaint can be updated",
+            });
+        }
+
+        if (
+          status ===
+          "closed"
+        ) {
+          return res
+            .status(403)
+            .json({
+              success:
+                false,
+              message:
+                "Only admin can close complaint",
+            });
+        }
+      }
+
+      const oldStatus =
+        complaint.status;
+
+      complaint.status =
+        status;
+
+      await complaint.save();
+
+      // Mail only first resolve
+      if (
+        oldStatus !==
+          "resolved" &&
+        status ===
+          "resolved"
+      ) {
+        const user =
+          await User.findById(
+            complaint.createdBy
+          );
+
+        if (
+          user?.email
+        ) {
+          await sendMail(
+            user.email,
+            "Complaint Resolved",
+            `Your complaint ${complaint.ticketId} has been resolved successfully.`
+          );
+        }
+      }
+
+      res.json({
+        success:
+          true,
+        message:
+          "Status updated successfully",
+        data:
+          complaint,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+// ======================================
+// GET OVERDUE COMPLAINTS
+// ======================================
+exports.getOverdueComplaints =
+  async (
+    req,
+    res,
+    next
+  ) => {
+    try {
+      const complaints =
+        await Complaint.find(
+          {
+            slaDueDate:
+              {
+                $lt: new Date(),
+              },
+            status:
+              {
+                $nin: [
+                  "resolved",
+                  "closed",
+                ],
+              },
+          }
+        )
+          .populate(
+            "createdBy",
+            "name email"
+          )
+          .populate(
+            "assignedTo",
+            "name email"
+          )
+          .sort({
+            slaDueDate: 1,
+          });
+
+      res.json({
+        success:
+          true,
+        count:
+          complaints.length,
+        data:
+          complaints.map(
+            formatComplaint
+          ),
+      });
+    } catch (error) {
+      next(error);
+    }
+  };

@@ -2,115 +2,218 @@ const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
+const {
+  generateAccessToken,
+  generateRefreshToken,
+} = require("../utils/generateToken");
+
+// ======================================
 // REGISTER
-exports.register = async (req, res) => {
+// ======================================
+exports.register = async (
+  req,
+  res,
+  next
+) => {
   try {
-    const { name, email, password } = req.body;
-
-    const userExists = await User.findOne({ email });
-    if (userExists) {
-      return res.status(400).json({ msg: "User already exists" });
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    const user = await User.create({
+    const {
       name,
       email,
-      password: hashedPassword,
-    });
+      password,
+    } = req.body;
 
-    res.status(201).json({ msg: "User registered successfully" });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
+    const userExists =
+      await User.findOne({
+        email,
+      });
 
-exports.refreshToken = async (req, res) => {
-  const { refreshToken } = req.body;
-
-  if (!refreshToken) {
-    return res.status(401).json({ msg: "No refresh token" });
-  }
-
-  try {
-    const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
-
-    const user = await User.findById(decoded.id);
-
-    if (!user || user.refreshToken !== refreshToken) {
-      return res.status(403).json({ msg: "Invalid refresh token" });
+    if (userExists) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "User already exists",
+      });
     }
 
-    const newAccessToken = jwt.sign(
-      { id: user._id, role: user.role },
-      process.env.JWT_ACCESS_SECRET,
-      { expiresIn: "15m" }
-    );
+    const hashedPassword =
+      await bcrypt.hash(
+        password,
+        10
+      );
 
-    res.json({ accessToken: newAccessToken });
+    await User.create({
+      name,
+      email,
+      password:
+        hashedPassword,
+    });
 
+    res.status(201).json({
+      success: true,
+      message:
+        "User registered successfully",
+    });
   } catch (error) {
-    res.status(403).json({ msg: "Invalid refresh token" });
+    next(error);
   }
 };
+
+// ======================================
 // LOGIN
-const generateAccessToken = (user) => {
-  return jwt.sign(
-    { id: user._id, role: user.role },
-    process.env.JWT_ACCESS_SECRET,
-    { expiresIn: "15m" }
-  );
-};
-
-const generateRefreshToken = (user) => {
-  return jwt.sign(
-    { id: user._id },
-    process.env.JWT_REFRESH_SECRET,
-    { expiresIn: "7d" }
-  );
-};
-
-
-exports.login = async (req, res) => {
+// ======================================
+exports.login = async (
+  req,
+  res,
+  next
+) => {
   try {
-    const { email, password } = req.body;
+    const {
+      email,
+      password,
+    } = req.body;
 
-    const user = await User.findOne({ email });
-    if (!user) return res.status(400).json({ msg: "Invalid credentials" });
+    const user =
+      await User.findOne({
+        email,
+      });
 
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.status(400).json({ msg: "Invalid credentials" });
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Invalid credentials",
+      });
+    }
 
-    const accessToken = generateAccessToken(user);
-    const refreshToken = generateRefreshToken(user);
+    const isMatch =
+      await bcrypt.compare(
+        password,
+        user.password
+      );
 
-    // Save refresh token in DB
-    user.refreshToken = refreshToken;
+    if (!isMatch) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Invalid credentials",
+      });
+    }
+
+    const accessToken =
+      generateAccessToken(
+        user
+      );
+
+    const refreshToken =
+      generateRefreshToken(
+        user
+      );
+
+    user.refreshToken =
+      refreshToken;
+
     await user.save();
 
     res.json({
+      success: true,
       accessToken,
       refreshToken,
       user: {
         id: user._id,
+        name: user.name,
+        email:
+          user.email,
         role: user.role,
-        email: user.email,
-        name: user.name
-      }
+      },
     });
-
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    next(error);
   }
 };
 
-exports.getMe = async (req, res) => {
-  try {
-    const user = await User.findById(req.user.id).select("-password");
+// ======================================
+// REFRESH TOKEN
+// ======================================
+exports.refreshToken = async (req,res,next) => {
+    try {
+      const { refreshToken: token } = req.body;ody;
 
-    res.json(user);
+      if (!refreshToken) {
+        return res.status(401).json({
+          success: false,
+          message:
+            "No refresh token",
+        });
+      }
+
+      const decoded =
+        jwt.verify(
+          refreshToken,
+          process.env
+            .JWT_REFRESH_SECRET
+        );
+
+      const user =
+        await User.findById(
+          decoded.id
+        );
+
+      if (
+        !user ||
+        user.refreshToken !==
+          refreshToken
+      ) {
+        return res.status(403).json({
+          success: false,
+          message:
+            "Invalid refresh token",
+        });
+      }
+
+      const newAccessToken =
+        generateAccessToken(
+          user
+        );
+
+      res.json({
+        success: true,
+        accessToken:
+          newAccessToken,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+// ======================================
+// GET CURRENT USER
+// ======================================
+exports.getMe = async (
+  req,
+  res,
+  next
+) => {
+  try {
+    const user =
+      await User.findById(
+        req.user.id
+      ).select(
+        "-password -refreshToken"
+      );
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message:
+          "User not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      data: user,
+    });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    next(error);
   }
 };

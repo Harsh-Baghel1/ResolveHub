@@ -1,3 +1,5 @@
+// backend/src/routes/adminRoutes.js
+
 const express = require("express");
 const router = express.Router();
 
@@ -11,15 +13,73 @@ const {
   changeUserRole,
   getAllComplaints,
   assignComplaint,
+  getOverdueComplaints,
 } = require("../controllers/adminController");
 
-router.use(protect, authorizeRoles("admin"));
+// ======================================
+// ADMIN ACCESS ONLY
+// ======================================
+router.use(
+  protect,
+  authorizeRoles("admin")
+);
 
-router.get("/stats", getDashboardStats);
-router.get("/users", getAllUsers);
-router.get("/agents", getAllAgents);
-router.patch("/users/role", changeUserRole);
-router.get("/complaints", getAllComplaints);
-router.patch("/complaints/assign", assignComplaint);
+// ======================================
+// DASHBOARD
+// ======================================
+
+// Admin Dashboard Stats
+router.get(
+  "/stats",
+  getDashboardStats
+);
+
+// ======================================
+// USER MANAGEMENT
+// ======================================
+
+// Get All Users
+router.get(
+  "/users",
+  getAllUsers
+);
+
+// Change User Role
+router.patch(
+  "/users/role",
+  changeUserRole
+);
+
+// ======================================
+// AGENT MANAGEMENT
+// ======================================
+
+// Get All Agents
+router.get(
+  "/agents",
+  getAllAgents
+);
+
+// ======================================
+// COMPLAINT MANAGEMENT
+// ======================================
+
+// Get All Complaints
+router.get(
+  "/complaints",
+  getAllComplaints
+);
+
+// Assign Complaint to Agent
+router.patch(
+  "/complaints/assign",
+  assignComplaint
+);
+
+// Get Overdue Complaints
+router.get(
+  "/complaints/overdue",
+  getOverdueComplaints
+);
 
 module.exports = router;
