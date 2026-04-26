@@ -1,47 +1,78 @@
-import AppRoutes from "./routes/AppRoutes";
+// frontend/src/App.jsx
+
 import { useEffect } from "react";
-import { useDispatch } from "react-redux";
-import axiosInstance from "./api/axiosInstance";
-import { loginSuccess, logout } from "./features/auth/authSlice";
+import {
+  useDispatch,
+} from "react-redux";
+
+import AppRoutes from "./routes/AppRoutes";
+
+import {
+  loginSuccess,
+  logout,
+} from "./features/auth/authSlice";
+
+import {
+  getMeAPI,
+} from "./features/auth/authAPI";
+
 import { Toaster } from "react-hot-toast";
 
 const App = () => {
-  const dispatch = useDispatch();
+  const dispatch =
+    useDispatch();
 
   useEffect(() => {
-    const token = localStorage.getItem("accessToken");
+    const accessToken =
+      localStorage.getItem(
+        "accessToken"
+      );
 
-    // No token → do nothing
-    if (!token) return;
+    // No token
+    if (!accessToken)
+      return;
 
-    const fetchUser = async () => {
-      try {
-        const res = await axiosInstance.get("/auth/me");
+    const restoreAuth =
+      async () => {
+        try {
+          const res =
+            await getMeAPI();
 
-        // Sync Redux with backend
-        dispatch(
-          loginSuccess({
-            user: res.data,
-            accessToken: token,
-          })
-        );
+          dispatch(
+            loginSuccess({
+              user:
+                res.data
+                  .data ||
+                res.data,
+              accessToken,
+            })
+          );
+        } catch  {
+          console.log(
+            "Session expired"
+          );
 
-      } catch  {
-        console.log("User not authenticated");
+          dispatch(
+            logout()
+          );
+        }
+      };
 
-        //  IMPORTANT FIX
-        localStorage.clear();
-        dispatch(logout()); 
-      }
-    };
-
-    fetchUser();
+    restoreAuth();
   }, [dispatch]);
 
-  return   <>
-    <AppRoutes />
-    <Toaster position="top-right" reverseOrder={false} />
-  </>;
+  return (
+    <>
+      <AppRoutes />
+
+      <Toaster
+        position="top-right"
+        reverseOrder={
+          false
+        }
+      />
+    </>
+  );
 };
 
 export default App;

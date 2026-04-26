@@ -1,12 +1,35 @@
 
+
 import { useSelector } from "react-redux";
-import { Navigate } from "react-router-dom";
 
-const ProtectedRoute = ({ children }) => {
-  const { accessToken } = useSelector((state) => state.auth);
+import { Navigate, useLocation,} from "react-router-dom";
 
-  if (!accessToken) {
-    return <Navigate to="/" replace />;
+const ProtectedRoute = ({ children,}) => {
+  const {
+    accessToken,
+    user,
+  } = useSelector(
+    (state) =>
+      state.auth
+  );
+
+  const location =
+    useLocation();
+
+  if (
+    !accessToken ||
+    !user
+  ) {
+    return (
+      <Navigate
+        to="/"
+        replace
+        state={{
+          from:
+            location,
+        }}
+      />
+    );
   }
 
   return children;

@@ -1,94 +1,238 @@
+// frontend/src/pages/auth/Login.jsx
+
 import { useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import { Navigate, useNavigate, Link } from "react-router-dom";
-import axiosInstance from "../../api/axiosInstance";
-import { loginSuccess } from "../../features/auth/authSlice";
+import {
+  useDispatch,
+  useSelector,
+} from "react-redux";
+
+import {
+  Navigate,
+  useNavigate,
+  Link,
+} from "react-router-dom";
+
 import AuthLayout from "../../layouts/AuthLayout";
 
+import {
+  loginStart,
+  loginSuccess,
+  loginFail,
+} from "../../features/auth/authSlice";
+
+import {
+  loginAPI,
+} from "../../features/auth/authAPI";
+
 const Login = () => {
-  const { accessToken,user  } = useSelector((state) => state.auth);
-  const dispatch = useDispatch();
-  const navigate = useNavigate();
+  const dispatch =
+    useDispatch();
 
-  const [form, setForm] = useState({ email: "", password: "" });
-  const [error, setError] = useState("");
+  const navigate =
+    useNavigate();
 
-  if (accessToken && user) {
-  if (user.role === "admin") return <Navigate to="/admin" replace />;
-  if (user.role === "agent") return <Navigate to="/agent" replace />;
-  return <Navigate to="/dashboard" replace />;
-}
+  const {
+    accessToken,
+    user,
+    loading,
+    error,
+  } = useSelector(
+    (state) =>
+      state.auth
+  );
 
-  const handleChange = (e) =>
-    setForm({ ...form, [e.target.name]: e.target.value });
+  const [form, setForm] =
+    useState({
+      email: "",
+      password: "",
+    });
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
-
-    try {
-      const res = await axiosInstance.post("/auth/login", form);
-
-      dispatch(
-        loginSuccess({
-          user: res.data.user,
-          accessToken: res.data.accessToken,
-        })
+  // ======================================
+  // REDIRECT IF ALREADY LOGGED IN
+  // ======================================
+  if (
+    accessToken &&
+    user
+  ) {
+    if (
+      user.role ===
+      "admin"
+    ) {
+      return (
+        <Navigate
+          to="/admin"
+          replace
+        />
       );
-
-      localStorage.setItem("accessToken", res.data.accessToken);
-      localStorage.setItem("refreshToken", res.data.refreshToken);
-
-      const role = res.data.user.role;
-
-if (role === "admin") {
-  navigate("/admin");
-} else {
-  navigate("/dashboard");
-}
-
-    } catch (err) {
-      setError(err.response?.data?.msg || "Login failed");
     }
+
+    if (
+      user.role ===
+      "agent"
+    ) {
+      return (
+        <Navigate
+          to="/agent"
+          replace
+        />
+      );
+    }
+
+    return (
+      <Navigate
+        to="/dashboard"
+        replace
+      />
+    );
+  }
+
+  // ======================================
+  // INPUT CHANGE
+  // ======================================
+  const handleChange = (
+    e
+  ) => {
+    setForm({
+      ...form,
+      [e.target.name]:
+        e.target.value,
+    });
   };
+
+  // ======================================
+  // LOGIN
+  // ======================================
+  const handleSubmit =
+    async (e) => {
+      e.preventDefault();
+
+      try {
+        dispatch(
+          loginStart()
+        );
+
+        const res =
+          await loginAPI(
+            form
+          );
+
+        const {
+          user,
+          accessToken,
+          refreshToken,
+        } = res.data;
+
+        localStorage.setItem(
+          "refreshToken",
+          refreshToken
+        );
+
+        dispatch(
+          loginSuccess({
+            user,
+            accessToken,
+          })
+        );
+
+        if (
+          user.role ===
+          "admin"
+        ) {
+          navigate(
+            "/admin"
+          );
+        } else if (
+          user.role ===
+          "agent"
+        ) {
+          navigate(
+            "/agent"
+          );
+        } else {
+          navigate(
+            "/dashboard"
+          );
+        }
+      } catch (err) {
+        dispatch(
+          loginFail(
+            err.response
+              ?.data
+              ?.message ||
+              "Login failed"
+          )
+        );
+      }
+    };
 
   return (
     <AuthLayout>
       <div className="bg-white p-8 rounded-2xl shadow-lg w-full max-w-md">
         <h2 className="text-2xl font-semibold text-center mb-6">
-          Sign in to ResolveHub
+          Sign in to
+          ResolveHub
         </h2>
 
         {error && (
-          <p className="text-red-500 text-sm mb-3 text-center">{error}</p>
+          <p className="text-red-500 text-sm mb-4 text-center">
+            {error}
+          </p>
         )}
 
-        <form onSubmit={handleLogin} className="space-y-4">
+        <form
+          onSubmit={
+            handleSubmit
+          }
+          className="space-y-4"
+        >
           <input
-            name="email"
             type="email"
+            name="email"
             placeholder="Email"
-            className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-            onChange={handleChange}
+            value={
+              form.email
+            }
+            onChange={
+              handleChange
+            }
             required
+            className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
           />
 
           <input
-            name="password"
             type="password"
+            name="password"
             placeholder="Password"
-            className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-            onChange={handleChange}
+            value={
+              form.password
+            }
+            onChange={
+              handleChange
+            }
             required
+            className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
           />
 
-          <button  className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition">
-            Login
+          <button
+            type="submit"
+            disabled={
+              loading
+            }
+            className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
+          >
+            {loading
+              ? "Signing In..."
+              : "Login"}
           </button>
         </form>
 
         <p className="text-sm text-center mt-4">
-          Don’t have an account?{" "}
-          <Link to="/signup" className="text-blue-600">
+          Don’t have an
+          account?{" "}
+          <Link
+            to="/signup"
+            className="text-blue-600"
+          >
             Signup
           </Link>
         </p>
