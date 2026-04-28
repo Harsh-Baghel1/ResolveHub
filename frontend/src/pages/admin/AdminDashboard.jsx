@@ -1,27 +1,68 @@
-import { useEffect, useState, useMemo  } from "react";
-import { useSelector, useDispatch } from "react-redux";
-import { useNavigate } from "react-router-dom";
-import axiosInstance from "../../api/axiosInstance";
-import { logout } from "../../features/auth/authSlice";
+// frontend/src/pages/admin/AdminDashboard.jsx
 
 import {
-  LayoutDashboard,
-  LogOut,
-  Users,
-  UserCog,
-  FileText,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+
+import { useNavigate } from "react-router-dom";
+import axiosInstance from "../../api/axiosInstance";
+
+import {
+  Activity,
   Clock3,
   CheckCircle2,
   AlertTriangle,
-  ShieldCheck,
+  FileText,
   Loader2,
+  ArrowRight,
+  ShieldCheck,
 } from "lucide-react";
 
-const AdminDashboard = () => {
-  const { user } = useSelector((state) => state.auth);
+/* =====================================
+   STAT CARD (FIXED - OUTSIDE COMPONENT)
+===================================== */
+const StatCard = ({
+  title,
+  value,
+  icon,
+  color,
+  keyName,
+  activeFilter,
+  setActiveFilter,
+}) => (
+  <button
+    onClick={() => setActiveFilter(keyName)}
+    className={`bg-white rounded-3xl border p-5 shadow-sm text-left transition hover:shadow-md ${
+      activeFilter === keyName
+        ? "border-blue-500"
+        : "border-slate-200"
+    }`}
+  >
+    <div className="flex items-center justify-between">
+      <p className="text-sm text-slate-500 font-medium">
+        {title}
+      </p>
 
-  const dispatch = useDispatch();
+      <div
+        className={`w-11 h-11 rounded-2xl flex items-center justify-center ${color}`}
+      >
+        {icon}
+      </div>
+    </div>
+
+    <h3 className="text-3xl font-bold text-slate-800 mt-4">
+      {value}
+    </h3>
+  </button>
+);
+
+const AdminDashboard = () => {
   const navigate = useNavigate();
+
+  const [loading, setLoading] = useState(true);
+  const [activeFilter, setActiveFilter] = useState("total");
 
   const [stats, setStats] = useState({
     total: 0,
@@ -31,298 +72,254 @@ const AdminDashboard = () => {
     overdue: 0,
   });
 
-  //const [users, setUsers] = useState([]);
   const [complaints, setComplaints] = useState([]);
-  const [loading, setLoading] = useState(true);
 
-  // ====================================
-  // FETCH ADMIN DATA
-  // ====================================
+  /* =====================================
+     LOAD DATA (FIXED API HANDLING)
+  ===================================== */
   useEffect(() => {
-    const fetchData = async () => {
+    const loadData = async () => {
       try {
-        const [statsRes, complaintsRes] = await Promise.all([
-          axiosInstance.get("/complaints/stats"),
-          axiosInstance.get("/complaints/all"),
-        ]);
+        const [statsRes, complaintsRes] =
+          await Promise.all([
+            axiosInstance.get("/admin/stats"),
+            axiosInstance.get("/admin/complaints"),
+          ]);
 
-        setStats(statsRes.data);
-        setComplaints(complaintsRes.data.complaints || []);
+        console.log("STATS API:", statsRes.data);
+        console.log("COMPLAINTS API:", complaintsRes.data);
+
+const statsData = statsRes.data.data || {};
+
+setStats({
+  total: statsData.totalComplaints || 0,
+  open: statsData.openComplaints || 0,
+  inProgress:
+    (statsData.totalComplaints || 0) -
+    (statsData.openComplaints || 0) -
+    (statsData.resolvedComplaints || 0) -
+    (statsData.closedComplaints || 0),
+  resolved: statsData.resolvedComplaints || 0,
+  overdue: statsData.overdueComplaints || 0,
+});
+
+        setComplaints(
+  Array.isArray(complaintsRes.data.data)
+    ? complaintsRes.data.data
+    : complaintsRes.data.data?.complaints || []
+);
       } catch (error) {
-        console.log(error);
+        console.log("Dashboard Error:", error);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchData();
+    loadData();
   }, []);
 
-  const [activeFilter, setActiveFilter] = useState("total");
+  /* =====================================
+     FILTER LOGIC (SAFE)
+  ===================================== */
+  const filtered = useMemo(() => {
+    return complaints.filter((item) => {
+      const status = item.status?.toLowerCase();
 
-  // ====================================
-  // LOGOUT
-  // ====================================
-  const handleLogout = () => {
-    localStorage.clear();
-    dispatch(logout());
-    navigate("/");
-  };
+      switch (activeFilter) {
+        case "open":
+          return status === "open" || status === "pending";
 
-  // ====================================
-  // STATUS FORMAT
-  // ====================================
-  const formatStatus = (status) => {
-    return status
-      ?.replace("_", " ")
-      ?.replace(/\b\w/g, (c) => c.toUpperCase());
-  };
+        case "in_progress":
+          return status === "in_progress";
 
+        case "resolved":
+          return status === "resolved" || status === "closed";
+
+        case "overdue":
+          return item.slaStatus === "overdue";
+
+        default:
+          return true;
+      }
+    });
+  }, [activeFilter, complaints]);
+
+  /* =====================================
+     HELPERS
+  ===================================== */
   const statusColor = (status) => {
-    switch (status) {
+    const s = status?.toLowerCase();
+
+    switch (s) {
       case "open":
-        return "bg-orange-100 text-orange-700";
+        return "bg-yellow-100 text-yellow-700";
       case "in_progress":
-        return "bg-purple-100 text-purple-700";
+        return "bg-blue-100 text-blue-700";
       case "resolved":
         return "bg-green-100 text-green-700";
       case "closed":
-        return "bg-gray-100 text-gray-700";
+        return "bg-slate-100 text-slate-700";
       default:
-        return "bg-blue-100 text-blue-700";
+        return "bg-purple-100 text-purple-700";
     }
   };
 
-  const filteredComplaints = useMemo(() => {
-  switch (activeFilter) {
-    case "open":
-      return complaints.filter(
-        (item) => item.status === "open"
-      );
+  const formatStatus = (value) =>
+    value
+      ?.replace("_", " ")
+      ?.replace(/\b\w/g, (c) => c.toUpperCase());
 
-    case "in_progress":
-      return complaints.filter(
-        (item) => item.status === "in_progress"
-      );
-
-    case "resolved":
-      return complaints.filter(
-        (item) => item.status === "resolved"
-      );
-
-    case "overdue":
-      return complaints.filter(
-        (item) =>
-          item.slaStatus === "overdue"
-      );
-
-    default:
-      return complaints;
-  }
-}, [activeFilter, complaints]);
-
-
+  /* =====================================
+     LOADING
+  ===================================== */
   if (loading) {
     return (
-      <div className="min-h-screen flex justify-center items-center text-gray-500">
+      <div className="h-full min-h-[70vh] flex items-center justify-center text-slate-500">
         <Loader2 className="animate-spin mr-2" />
-        Loading Admin Dashboard...
+        Loading dashboard...
       </div>
     );
   }
 
+  /* =====================================
+     UI
+  ===================================== */
   return (
-    <div className="min-h-screen bg-slate-100">
-      <div className="flex">
+    <div>
 
-        {/* ====================================
-            SIDEBAR
-        ==================================== */}
-        <aside className="w-64 min-h-screen bg-slate-900 text-white p-5 hidden md:block">
-          <h1 className="text-3xl font-bold mb-10">
-            ResolveHub
-          </h1>
+      {/* HERO */}
+      <div className="bg-gradient-to-r from-indigo-600 to-blue-600 rounded-3xl p-8 text-white shadow-sm mb-6">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
 
-          <div className="space-y-3">
-
-            <div className="flex items-center gap-3 bg-slate-800 px-4 py-3 rounded-xl">
-              <LayoutDashboard size={18} />
-              Dashboard
-            </div>
-
-            <button
-              onClick={() => navigate("/admin/users")}
-              className="w-full text-left px-4 py-3 rounded-xl hover:bg-slate-800 flex gap-3 items-center"
-            >
-              <Users size={18} />
-              Users
-            </button>
-
-            <button
-              onClick={() => navigate("/admin/agents")}
-              className="w-full text-left px-4 py-3 rounded-xl hover:bg-slate-800 flex gap-3 items-center"
-            >
-              <UserCog size={18} />
-              Agents
-            </button>
-
-            <button
-              onClick={() => navigate("/admin/complaints")}
-              className="w-full text-left px-4 py-3 rounded-xl hover:bg-slate-800 flex gap-3 items-center"
-            >
-              <FileText size={18} />
-              Complaints
-            </button>
-
-            <button
-              onClick={handleLogout}
-              className="w-full text-left px-4 py-3 rounded-xl hover:bg-red-600 flex gap-3 items-center"
-            >
-              <LogOut size={18} />
-              Logout
-            </button>
-
+          <div>
+            <p className="text-blue-100 text-sm">
+              Admin Workspace
+            </p>
+            <h1 className="text-4xl font-bold mt-2">
+              Dashboard Overview
+            </h1>
+            <p className="text-blue-100 mt-3 max-w-2xl">
+              Track complaints, SLA breaches, and support operations in real time.
+            </p>
           </div>
-        </aside>
 
-        {/* ====================================
-            MAIN
-        ==================================== */}
-        <main className="flex-1 p-6">
-
-          {/* HEADER */}
-          <div className="bg-white rounded-2xl shadow-sm p-6 mb-6 flex justify-between items-center">
-
-            <div>
-              <h2 className="text-3xl font-bold text-slate-800">
-                Welcome Admin, {user?.name}
-              </h2>
-
-              <p className="text-gray-500 mt-1">
-                Manage complaints, assignments and users.
-              </p>
-            </div>
-
-            <div className="px-4 py-2 rounded-full bg-purple-100 text-purple-700 text-sm font-medium flex gap-2 items-center">
+          <div className="bg-white/15 backdrop-blur px-5 py-4 rounded-2xl">
+            <div className="flex items-center gap-2 text-sm">
               <ShieldCheck size={16} />
-              Administrator
+              System Status
+            </div>
+            <div className="mt-2 text-2xl font-bold">
+              Active
             </div>
           </div>
 
-          {/* ====================================
-              STATS
-          ==================================== */}
-         <div className="grid lg:grid-cols-5 md:grid-cols-2 gap-5 mb-6">
+        </div>
+      </div>
 
-  <div
-    onClick={() => setActiveFilter("total")}
-    className="bg-white p-5 rounded-2xl shadow-sm cursor-pointer hover:shadow-md transition"
-  >
-    <p className="text-gray-500">Total</p>
-    <h3 className="text-3xl font-bold mt-2">
-      {stats.total}
-    </h3>
-  </div>
+      {/* STATS */}
+      <div className="grid md:grid-cols-2 xl:grid-cols-5 gap-5 mb-6">
 
-  <div
-    onClick={() => setActiveFilter("open")}
-    className="bg-white p-5 rounded-2xl shadow-sm cursor-pointer hover:shadow-md transition"
-  >
-    <p className="text-gray-500">Open</p>
-    <h3 className="text-3xl font-bold mt-2 text-orange-500">
-      {stats.open}
-    </h3>
-  </div>
+        <StatCard title="Total" value={stats.total} keyName="total"
+          color="bg-slate-100 text-slate-700"
+          icon={<Activity size={22} />}
+          activeFilter={activeFilter} setActiveFilter={setActiveFilter}
+        />
 
-  <div
-    onClick={() => setActiveFilter("in_progress")}
-    className="bg-white p-5 rounded-2xl shadow-sm cursor-pointer hover:shadow-md transition"
-  >
-    <p className="text-gray-500">In Progress</p>
-    <h3 className="text-3xl font-bold mt-2 text-purple-500">
-      {stats.inProgress}
-    </h3>
-  </div>
+        <StatCard title="Open" value={stats.open} keyName="open"
+          color="bg-yellow-100 text-yellow-700"
+          icon={<Clock3 size={22} />}
+          activeFilter={activeFilter} setActiveFilter={setActiveFilter}
+        />
 
-  <div
-    onClick={() => setActiveFilter("resolved")}
-    className="bg-white p-5 rounded-2xl shadow-sm cursor-pointer hover:shadow-md transition"
-  >
-    <p className="text-gray-500">Resolved</p>
-    <h3 className="text-3xl font-bold mt-2 text-green-500">
-      {stats.resolved}
-    </h3>
-  </div>
+        <StatCard title="In Progress" value={stats.inProgress} keyName="in_progress"
+          color="bg-blue-100 text-blue-700"
+          icon={<FileText size={22} />}
+          activeFilter={activeFilter} setActiveFilter={setActiveFilter}
+        />
 
-  <div
-    onClick={() => setActiveFilter("overdue")}
-    className="bg-white p-5 rounded-2xl shadow-sm cursor-pointer hover:shadow-md transition"
-  >
-    <p className="text-gray-500">Overdue</p>
-    <h3 className="text-3xl font-bold mt-2 text-red-500">
-      {stats.overdue}
-    </h3>
-  </div>
+        <StatCard title="Resolved" value={stats.resolved} keyName="resolved"
+          color="bg-green-100 text-green-700"
+          icon={<CheckCircle2 size={22} />}
+          activeFilter={activeFilter} setActiveFilter={setActiveFilter}
+        />
 
-</div>
+        <StatCard title="Overdue" value={stats.overdue} keyName="overdue"
+          color="bg-red-100 text-red-700"
+          icon={<AlertTriangle size={22} />}
+          activeFilter={activeFilter} setActiveFilter={setActiveFilter}
+        />
 
-          {/* ====================================
-              RECENT COMPLAINTS
-          ==================================== */}
-          <div className="bg-white rounded-2xl shadow-sm p-6">
+      </div>
 
-            <div className="flex justify-between items-center mb-5">
-              <h3 className="text-2xl font-semibold text-slate-800">
-                All Complaints
-              </h3>
+      {/* TABLE */}
+      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
 
+        <div className="px-6 py-5 border-b flex items-center justify-between">
+          <div>
+            <h3 className="text-xl font-bold text-slate-800">
+              Recent Complaints
+            </h3>
+            <p className="text-sm text-slate-500 mt-1">
+              Showing {filtered.length} records
+            </p>
+          </div>
+
+          <button
+            onClick={() => navigate("/admin/complaints")}
+            className="text-blue-600 font-medium text-sm flex items-center gap-2 hover:text-blue-700"
+          >
+            View All
+            <ArrowRight size={16} />
+          </button>
+        </div>
+
+        {filtered.length === 0 ? (
+          <div className="p-14 text-center">
+            <p className="text-lg font-semibold text-gray-600">
+              No complaints yet 🚀
+            </p>
+            <p className="text-sm text-gray-400 mt-2">
+              You're all caught up!
+            </p>
+          </div>
+        ) : (
+          <div className="divide-y">
+            {filtered.slice(0, 7).map((item) => (
               <button
-                onClick={() => navigate("/admin/complaints")}
-                className="text-blue-600 text-sm font-medium"
+                key={item._id}
+                onClick={() =>
+                  navigate(`/complaint/${item._id}`)
+                }
+                className="w-full text-left px-6 py-5 hover:bg-slate-50 transition"
               >
-                View All
-              </button>
-            </div>
+                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
 
-            <div className="space-y-4">
+                  <div>
+                    <h4 className="font-semibold text-slate-800">
+                      {item.title}
+                    </h4>
 
-              {filteredComplaints.slice(0, 6).map((item) => (
-                <div
-                  key={item._id}
-                  onClick={() => navigate(`/complaint/${item._id}`)}
-                  className="border rounded-xl p-4 hover:shadow-md transition cursor-pointer"
-                >
-
-                  <div className="flex justify-between gap-4">
-
-                    <div>
-                      <h4 className="font-semibold text-slate-800">
-                        {item.title}
-                      </h4>
-
-                      <p className="text-sm text-gray-500 mt-1">
-                        {item.createdBy?.name}
-                      </p>
-                    </div>
-
-                    <span
-                      className={`px-3 py-1 rounded-full text-xs h-fit ${statusColor(
-                        item.status
-                      )}`}
-                    >
-                      {formatStatus(item.status)}
-                    </span>
-
+                    <p className="text-sm text-slate-500 mt-1">
+                      Ticket #{item.ticketId || "N/A"} •{" "}
+                      {item.createdBy?.name || "Unknown User"}
+                    </p>
                   </div>
 
+                  <span
+                    className={`px-3 py-1 rounded-full text-xs font-semibold ${statusColor(
+                      item.status
+                    )}`}
+                  >
+                    {formatStatus(item.status)}
+                  </span>
+
                 </div>
-              ))}
-
-            </div>
+              </button>
+            ))}
           </div>
-
-        </main>
+        )}
       </div>
+
     </div>
   );
 };

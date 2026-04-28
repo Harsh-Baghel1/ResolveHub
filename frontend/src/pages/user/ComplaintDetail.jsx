@@ -1,8 +1,17 @@
-// src/pages/ComplaintDetail.jsx
+// frontend/src/pages/user/ComplaintDetail.jsx
 
-import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import {
+  useEffect,
+  useState,
+} from "react";
+
+import {
+  useParams,
+  useNavigate,
+} from "react-router-dom";
+
 import axiosInstance from "../../api/axiosInstance";
+
 import {
   CalendarDays,
   UserCircle,
@@ -10,204 +19,395 @@ import {
   Tag,
   AlertTriangle,
   Loader2,
+  MessageCircle,
+  ArrowLeft,
+  Hash,
 } from "lucide-react";
 
+import UserLayout from "../../layouts/UserLayout";
+
 const ComplaintDetail = () => {
-  const { id } = useParams();
-  const navigate = useNavigate();
+  const { id } =
+    useParams();
 
-  const [complaint, setComplaint] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const navigate =
+    useNavigate();
 
-  // FETCH DATA
+  const [
+    complaint,
+    setComplaint,
+  ] = useState(null);
+
+  const [
+    loading,
+    setLoading,
+  ] = useState(true);
+
+  const [
+    error,
+    setError,
+  ] = useState("");
+
+  // ======================================
+  // FETCH COMPLAINT
+  // ======================================
   useEffect(() => {
-    const fetchComplaint = async () => {
-      try {
-        const res = await axiosInstance.get(`/complaints/${id}`);
-        setComplaint(res.data);
-      } catch (error) {
-        console.log(error);
-      } finally {
-        setLoading(false);
-      }
-    };
+    const fetchComplaint =
+      async () => {
+        try {
+          const res =
+            await axiosInstance.get(
+              `/complaints/${id}`
+            );
+
+          setComplaint(
+            res.data
+              .data ||
+              res.data
+          );
+        } catch (
+          err
+        ) {
+          setError(
+            err
+              .response
+              ?.data
+              ?.message ||
+              "Failed to load complaint"
+          );
+        } finally {
+          setLoading(
+            false
+          );
+        }
+      };
 
     fetchComplaint();
   }, [id]);
 
-  // FORMAT STATUS
-  const formatStatus = (status) => {
-    return status
-      ?.replace("_", " ")
-      ?.replace(/\b\w/g, (c) => c.toUpperCase());
-  };
+  // ======================================
+  // FORMATTERS
+  // ======================================
+  const formatText =
+    (
+      value
+    ) => {
+      return value
+        ?.replace(
+          "_",
+          " "
+        )
+        ?.replace(
+          /\b\w/g,
+          (
+            c
+          ) =>
+            c.toUpperCase()
+        );
+    };
 
-  // STATUS COLOR
-  const statusColor = (status) => {
-    switch (status) {
-      case "open":
-        return "bg-orange-100 text-orange-700";
-      case "in_progress":
-        return "bg-purple-100 text-purple-700";
-      case "resolved":
-        return "bg-green-100 text-green-700";
-      case "closed":
-        return "bg-gray-200 text-gray-700";
-      default:
-        return "bg-blue-100 text-blue-700";
-    }
-  };
+  const statusColor =
+    (
+      status
+    ) => {
+      switch (
+        status
+      ) {
+        case "open":
+          return "bg-yellow-100 text-yellow-700";
 
-  // PRIORITY COLOR
-  const priorityColor = (priority) => {
-    switch (priority) {
-      case "high":
-        return "bg-red-100 text-red-700";
-      case "medium":
-        return "bg-yellow-100 text-yellow-700";
-      case "low":
-        return "bg-green-100 text-green-700";
-      default:
-        return "bg-gray-100 text-gray-700";
-    }
-  };
+        case "in_progress":
+          return "bg-blue-100 text-blue-700";
 
-  if (loading) {
+        case "resolved":
+          return "bg-green-100 text-green-700";
+
+        case "closed":
+          return "bg-gray-100 text-gray-700";
+
+        default:
+          return "bg-slate-100 text-slate-700";
+      }
+    };
+
+  const priorityColor =
+    (
+      priority
+    ) => {
+      switch (
+        priority
+      ) {
+        case "high":
+          return "bg-red-100 text-red-700";
+
+        case "medium":
+          return "bg-orange-100 text-orange-700";
+
+        case "low":
+          return "bg-green-100 text-green-700";
+
+        default:
+          return "bg-slate-100 text-slate-700";
+      }
+    };
+
+  // ======================================
+  // LOADING
+  // ======================================
+  if (
+    loading
+  ) {
     return (
-      <div className="min-h-screen flex justify-center items-center text-gray-500">
-        <Loader2 className="animate-spin mr-2" />
-        Loading complaint...
-      </div>
+      <UserLayout>
+        <div className="bg-white rounded-2xl shadow-sm p-10 flex justify-center items-center text-gray-500">
+          <Loader2 className="animate-spin mr-2" />
+          Loading complaint...
+        </div>
+      </UserLayout>
     );
   }
 
-  if (!complaint) {
+  // ======================================
+  // ERROR
+  // ======================================
+  if (
+    error
+  ) {
     return (
-      <div className="min-h-screen flex justify-center items-center text-red-500">
-        Complaint not found
-      </div>
+      <UserLayout>
+        <div className="bg-red-100 text-red-700 rounded-2xl p-6">
+          {
+            error
+          }
+        </div>
+      </UserLayout>
+    );
+  }
+
+  // ======================================
+  // NO DATA
+  // ======================================
+  if (
+    !complaint
+  ) {
+    return (
+      <UserLayout>
+        <div className="bg-white rounded-2xl shadow-sm p-10 text-center text-gray-500">
+          Complaint
+          not found.
+        </div>
+      </UserLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 p-6">
-
-      {/* MAIN CARD */}
-      <div className="max-w-5xl mx-auto bg-white rounded-2xl shadow-sm p-8">
+    <UserLayout>
+      <div className="max-w-6xl mx-auto">
 
         {/* HEADER */}
-        <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4 border-b pb-6">
+        <div className="bg-white rounded-2xl shadow-sm p-8">
 
-          <div>
-            <h1 className="text-3xl font-bold text-slate-800">
-              {complaint.title}
-            </h1>
+          <div className="flex flex-col md:flex-row md:justify-between gap-5 border-b pb-6">
 
-            <p className="text-gray-500 mt-2 max-w-2xl">
-              {complaint.description}
-            </p>
+            <div>
+              <h1 className="text-3xl font-bold text-slate-800">
+                {
+                  complaint.title
+                }
+              </h1>
+
+              <p className="text-gray-500 mt-2 max-w-3xl leading-relaxed">
+                {
+                  complaint.description
+                }
+              </p>
+            </div>
+
+            <div className="flex flex-wrap gap-2 h-fit">
+
+              <span
+                className={`px-4 py-2 rounded-full text-sm font-medium ${statusColor(
+                  complaint.status
+                )}`}
+              >
+                {formatText(
+                  complaint.status
+                )}
+              </span>
+
+              <span
+                className={`px-4 py-2 rounded-full text-sm font-medium ${priorityColor(
+                  complaint.priority
+                )}`}
+              >
+                {formatText(
+                  complaint.priority
+                )}
+              </span>
+
+            </div>
+
           </div>
 
-          <div className="flex flex-wrap gap-2">
+          {/* DETAILS */}
+          <div className="grid md:grid-cols-2 gap-6 mt-8">
 
-            <span
-              className={`px-4 py-2 rounded-full text-sm font-medium ${statusColor(
-                complaint.status
-              )}`}
+            {/* LEFT */}
+            <div className="space-y-5">
+
+              <div className="bg-slate-50 rounded-xl p-5">
+                <p className="text-sm text-gray-500 mb-2">
+                  Category
+                </p>
+
+                <div className="flex items-center gap-2 font-semibold text-slate-700">
+                  <Tag
+                    size={
+                      16
+                    }
+                  />
+                  {formatText(
+                    complaint.category
+                  )}
+                </div>
+              </div>
+
+              <div className="bg-slate-50 rounded-xl p-5">
+                <p className="text-sm text-gray-500 mb-2">
+                  Created By
+                </p>
+
+                <div className="flex items-center gap-2 font-semibold text-slate-700">
+                  <UserCircle
+                    size={
+                      16
+                    }
+                  />
+                  {complaint
+                    .createdBy
+                    ?.name ||
+                    "Unknown"}
+                </div>
+              </div>
+
+              <div className="bg-slate-50 rounded-xl p-5">
+                <p className="text-sm text-gray-500 mb-2">
+                  Assigned To
+                </p>
+
+                <div className="flex items-center gap-2 font-semibold text-slate-700">
+                  <ShieldCheck
+                    size={
+                      16
+                    }
+                  />
+                  {complaint
+                    .assignedTo
+                    ?.name ||
+                    "Not Assigned"}
+                </div>
+              </div>
+
+            </div>
+
+            {/* RIGHT */}
+            <div className="space-y-5">
+
+              <div className="bg-slate-50 rounded-xl p-5">
+                <p className="text-sm text-gray-500 mb-2">
+                  Created Date
+                </p>
+
+                <div className="flex items-center gap-2 font-semibold text-slate-700">
+                  <CalendarDays
+                    size={
+                      16
+                    }
+                  />
+                  {new Date(
+                    complaint.createdAt
+                  ).toLocaleDateString()}
+                </div>
+              </div>
+
+              <div className="bg-slate-50 rounded-xl p-5">
+                <p className="text-sm text-gray-500 mb-2">
+                  SLA Status
+                </p>
+
+                <div className="flex items-center gap-2 font-semibold text-slate-700">
+                  <AlertTriangle
+                    size={
+                      16
+                    }
+                  />
+                  {formatText(
+                    complaint.slaStatus ||
+                      "within_sla"
+                  )}
+                </div>
+              </div>
+
+              <div className="bg-slate-50 rounded-xl p-5">
+                <p className="text-sm text-gray-500 mb-2">
+                  Ticket ID
+                </p>
+
+                <div className="flex items-center gap-2 font-semibold text-slate-700 text-lg">
+                  <Hash
+                    size={
+                      16
+                    }
+                  />
+                  {complaint.ticketId ||
+                    "RH-0000"}
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+
+          {/* ACTIONS */}
+          <div className="border-t mt-8 pt-6 flex flex-wrap gap-3">
+
+            <button
+              onClick={() =>
+                navigate(
+                  -1
+                )
+              }
+              className="px-5 py-3 rounded-xl border hover:bg-slate-50 flex items-center gap-2"
             >
-              {formatStatus(complaint.status)}
-            </span>
+              <ArrowLeft
+                size={
+                  16
+                }
+              />
+              Back
+            </button>
 
-            <span
-              className={`px-4 py-2 rounded-full text-sm font-medium ${priorityColor(
-                complaint.priority
-              )}`}
+            <button
+              onClick={() =>
+                navigate(
+                  `/chat/${complaint._id}`
+                )
+              }
+              className="px-5 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
             >
-              {complaint.priority}
-            </span>
-
-          </div>
-        </div>
-
-        {/* DETAILS GRID */}
-        <div className="grid md:grid-cols-2 gap-6 mt-8">
-
-          {/* LEFT */}
-          <div className="space-y-5">
-
-            <div className="bg-slate-50 p-4 rounded-xl">
-              <p className="text-sm text-gray-500 mb-1">Category</p>
-              <div className="flex items-center gap-2 font-semibold text-slate-700">
-                <Tag size={16} />
-                {complaint.category}
-              </div>
-            </div>
-
-            <div className="bg-slate-50 p-4 rounded-xl">
-              <p className="text-sm text-gray-500 mb-1">Created By</p>
-              <div className="flex items-center gap-2 font-semibold text-slate-700">
-                <UserCircle size={16} />
-                {complaint.createdBy?.name || "Unknown"}
-              </div>
-            </div>
-
-            <div className="bg-slate-50 p-4 rounded-xl">
-              <p className="text-sm text-gray-500 mb-1">Assigned To</p>
-              <div className="flex items-center gap-2 font-semibold text-slate-700">
-                <ShieldCheck size={16} />
-                {complaint.assignedTo?.name || "Not Assigned"}
-              </div>
-            </div>
+              <MessageCircle
+                size={
+                  16
+                }
+              />
+              Chat Support
+            </button>
 
           </div>
 
-          {/* RIGHT */}
-          <div className="space-y-5">
-
-            <div className="bg-slate-50 p-4 rounded-xl">
-              <p className="text-sm text-gray-500 mb-1">Created Date</p>
-              <div className="flex items-center gap-2 font-semibold text-slate-700">
-                <CalendarDays size={16} />
-                {new Date(complaint.createdAt).toLocaleDateString()}
-              </div>
-            </div>
-
-            <div className="bg-slate-50 p-4 rounded-xl">
-              <p className="text-sm text-gray-500 mb-1">SLA Status</p>
-              <div className="flex items-center gap-2 font-semibold text-slate-700">
-                <AlertTriangle size={16} />
-                {complaint.slaStatus || "Within SLA"}
-              </div>
-            </div>
-
-            <div className="bg-slate-50 p-4 rounded-xl">
-  <p className="text-sm text-gray-500 mb-1">Ticket ID</p>
-  <div className="font-semibold text-slate-700 text-lg">
-    {complaint.ticketId || "RH-0000"}
-  </div>
-</div>
-
-          </div>
         </div>
-
-        {/* FOOTER */}
-        <div className="border-t mt-8 pt-6 flex flex-wrap gap-3">
-
-          <button
-            onClick={() => navigate(-1)}
-            className="px-5 py-2 rounded-xl border hover:bg-slate-50 transition"
-          >
-            Back
-          </button>
-
-          <button className="px-5 py-2 rounded-xl bg-blue-600 text-white hover:bg-blue-700 transition">
-            Chat Support
-          </button>
-
-        </div>
-
       </div>
-    </div>
+    </UserLayout>
   );
 };
 
