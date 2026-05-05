@@ -21,7 +21,7 @@ import CreateComplaint from "../pages/user/CreateComplaint";
 import MyComplaints from "../pages/user/MyComplaints";
 import ComplaintDetail from "../pages/user/ComplaintDetail";
 import UserChat from "../pages/user/UserChat";
-
+import UserDetail from "../pages/admin/UserDetail";
 /* ADMIN */
 import AdminDashboard from "../pages/admin/AdminDashboard";
 import ManageComplaints from "../pages/admin/ManageComplaints";
@@ -137,10 +137,8 @@ const AppRoutes = () => {
             element={<ManageComplaints />}
           />
 
-          <Route
-            path="users"
-            element={<ManageUsers />}
-          />
+          <Route path="users" element={<ManageUsers />} />
+          <Route path="user/:id" element={<UserDetail />} />
 
           <Route
             path="agents"

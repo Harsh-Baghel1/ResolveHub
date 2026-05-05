@@ -16,11 +16,11 @@ const ENDPOINTS = {
   },
 
   AGENT: {
-    PROFILE: "/agent/profile",
-    COMPLAINTS: "/agent/complaints",
-    PERFORMANCE: "/agent/performance",
-    NOTIFICATIONS: "/agent/notifications",
-  },
+  PROFILE: "/agent/profile",
+  COMPLAINTS: "/agent/complaints", 
+  PERFORMANCE: "/agent/performance",
+  NOTIFICATIONS: "/agent/notifications",
+},
 
   ADMIN: {
     STATS: "/admin/stats",
@@ -35,7 +35,6 @@ const ENDPOINTS = {
   COMPLAINT: {
     CREATE: "/complaints",
     MY: "/complaints/my",
-    ASSIGNED: "/complaints/assigned",
     STATUS: "/complaints/status",
   },
 

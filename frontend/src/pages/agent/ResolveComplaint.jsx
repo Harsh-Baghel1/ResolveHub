@@ -145,17 +145,10 @@ const ResolveComplaint = () => {
           true
         );
 
-        await axiosInstance.put(
-          "/complaints/status",
-          {
-            complaintId:
-              id,
-            status:
-              form.status,
-            resolutionNote:
-              form.resolutionNote,
-          }
-        );
+        await axiosInstance.patch("/agent/complaints/status", {
+  complaintId: id,
+  status: form.status,
+});
 
         navigate(
           "/agent/complaints"

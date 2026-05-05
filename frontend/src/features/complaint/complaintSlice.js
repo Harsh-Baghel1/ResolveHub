@@ -41,16 +41,9 @@ export const fetchComplaints =
               .ADMIN
               .COMPLAINTS;
         }
-
-        if (
-          role ===
-          "agent"
-        ) {
-          url =
-            ENDPOINTS
-              .COMPLAINT
-              .ASSIGNED;
-        }
+if (role === "agent") {
+  url = ENDPOINTS.AGENT.COMPLAINTS; 
+}
 
         const res =
           await axiosInstance.get(

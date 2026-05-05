@@ -78,10 +78,7 @@ const ManageAgents = () => {
               "/admin/agents"
             );
 
-          setAgents(
-            res.data.agents ||
-              []
-          );
+          setAgents(res.data.data || []);
         } catch (
           error
         ) {
