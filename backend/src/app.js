@@ -5,6 +5,8 @@ const authRoutes = require("./routes/authRoutes");
 const complaintRoutes = require("./routes/complaintRoutes");
 const messageRoutes = require("./routes/messageRoutes");
 const adminRoutes = require("./routes/adminRoutes");
+const agentRoutes = require("./routes/agentRoutes");
+
 
 const protect = require("./middleware/authMiddleware");
 
@@ -29,6 +31,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/complaints", complaintRoutes);
 app.use("/api/messages", messageRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/agent", agentRoutes);
 
 // Protected Test Route
 app.get("/api/test", protect, (req, res) => {

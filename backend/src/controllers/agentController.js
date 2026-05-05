@@ -49,7 +49,7 @@ const formatComplaint = (
 // ======================================
 // GET AGENT PROFILE
 // ======================================
-exports.getProfile =
+exports.getAgentProfile  =
   async (
     req,
     res,

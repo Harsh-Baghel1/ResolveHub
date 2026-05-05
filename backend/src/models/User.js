@@ -20,6 +20,27 @@ const userSchema = new mongoose.Schema(
       enum: ["admin", "user", "agent"],
       default: "user",
     },
+    status: {
+      type: String,
+      enum: ["active", "suspended"],
+      default: "active",
+    },
+
+    skills: {
+  type: [String],
+  default: [],
+},
+
+activeTickets: {
+  type: Number,
+  default: 0,
+},
+
+isAvailable: {
+  type: Boolean,
+  default: true,
+},
+
     refreshToken: {
   type: String
 },

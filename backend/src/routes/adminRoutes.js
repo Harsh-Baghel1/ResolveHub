@@ -5,7 +5,6 @@ const router = express.Router();
 
 const protect = require("../middleware/authMiddleware");
 const authorizeRoles = require("../middleware/roleMiddleware");
-
 const {
   getDashboardStats,
   getAllUsers,
@@ -14,6 +13,9 @@ const {
   getAllComplaints,
   assignComplaint,
   getOverdueComplaints,
+  updateAgentDetails,
+  getUserById,
+  updateUserStatus,
 } = require("../controllers/adminController");
 
 // ======================================
@@ -34,6 +36,8 @@ router.get(
   getDashboardStats
 );
 
+
+
 // ======================================
 // USER MANAGEMENT
 // ======================================
@@ -43,6 +47,8 @@ router.get(
   "/users",
   getAllUsers
 );
+
+router.get("/users/:id", getUserById);
 
 // Change User Role
 router.patch(
@@ -59,6 +65,10 @@ router.get(
   "/agents",
   getAllAgents
 );
+
+router.patch("/agents/:id", updateAgentDetails);
+
+router.put("/users/status", updateUserStatus);
 
 // ======================================
 // COMPLAINT MANAGEMENT
