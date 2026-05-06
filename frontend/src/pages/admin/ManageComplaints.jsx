@@ -19,6 +19,9 @@ import {
   AlertTriangle,
 } from "lucide-react";
 
+
+
+
 /* =========================
    STATUS & PRIORITY COLORS
 ========================= */
@@ -44,7 +47,6 @@ const ManageComplaints = () => {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [filter, setFilter] = useState("all");
-
   /* =========================
      DEBOUNCE SEARCH
   ========================= */
@@ -223,34 +225,68 @@ const ManageComplaints = () => {
                   )}
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-4">
 
-                  <span
-                    className={`px-2 py-1 rounded text-xs ${
-                      statusColor[item.status] || ""
-                    }`}
-                  >
-                    {item.status}
-                  </span>
+  {/* STATUS */}
+  <span
+    className={`px-2 py-1 rounded text-xs ${
+      statusColor[item.status] || ""
+    }`}
+  >
+    {item.status}
+  </span>
 
-                  <span
-                    className={`px-2 py-1 rounded text-xs ${
-                      priorityColor[item.priority] || ""
-                    }`}
-                  >
-                    {item.priority}
-                  </span>
+  {/* PRIORITY */}
+  <span
+    className={`px-2 py-1 rounded text-xs ${
+      priorityColor[item.priority] || ""
+    }`}
+  >
+    {item.priority}
+  </span>
 
-                  <button
-                    onClick={() =>
-                      navigate(`/complaint/${item._id}`)
-                    }
-                    className="text-blue-600 hover:text-blue-800"
-                  >
-                    <Eye size={16} />
-                  </button>
+  {/*  ASSIGNMENT REASON */}
+  <div className="flex flex-col items-start text-xs">
 
-                </div>
+    {item.assignmentReason ? (
+      <>
+        <span
+          title={item.assignmentReason}
+          
+          className={`px-2 py-1 rounded-full font-medium cursor-pointer ${
+            item.assignmentReason.toLowerCase().includes("skill")
+              ? "bg-green-100 text-green-700"
+              : "bg-yellow-100 text-yellow-700"
+          }`}
+        >
+          {item.assignmentReason.toLowerCase().includes("skill")
+            ? "Skill Match"
+            : "Fallback"}
+        </span>
+
+        <span className="text-slate-400 mt-1 max-w-[140px] truncate">
+          {item.assignmentReason}
+        </span>
+      </>
+    ) : (
+      <span className="text-slate-400">
+        Not Assigned
+      </span>
+    )}
+
+  </div>
+
+  {/* VIEW BUTTON */}
+ <button
+  onClick={() =>
+    navigate(`/admin/complaints/${item._id}`)
+  }
+  className="text-blue-600 hover:text-blue-800"
+>
+  <Eye size={16} />
+</button>
+
+</div>
               </div>
             ))
           )}

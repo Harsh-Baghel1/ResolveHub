@@ -58,6 +58,10 @@ const complaintSchema = new mongoose.Schema(
   unique: true
 },
 
+assignmentReason: {
+  type: String,
+},
+
     attachments: [
       {
         fileUrl: String,
