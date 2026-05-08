@@ -42,10 +42,8 @@ const socketHandler = (io) => {
           "name email role"
         );
 
-        io.to(complaintId).emit(
-          "receiveMessage",
-          populated
-        );
+        io.to(complaintId).emit("receiveMessage", populated);
+socket.emit("receiveMessage", populated); // 🔥 send back to sender
 
       } catch (error) {
         console.error("Message Error:", error.message);

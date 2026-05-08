@@ -130,6 +130,8 @@ const agents = await User.find({
     if (agents.length > 0) {
       assignedAgent = agents[0];
       assignmentReason = "Matched by skill + lowest workload";
+    } else {
+       assignmentReason = "No skilled agent available";
     }
 
     // STEP 2: Fallback (no skill match)

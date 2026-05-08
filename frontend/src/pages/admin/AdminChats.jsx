@@ -1,650 +1,202 @@
-// frontend/src/pages/admin/AdminChats.jsx
-
-import {
-  useEffect,
-  useMemo,
-  useState,
-  useCallback,
-  useRef,
-} from "react";
-
+import { useEffect, useState } from "react";
 import axiosInstance from "../../api/axiosInstance";
-
-import {
-  Search,
-  Filter,
-  Loader2,
-  MessageSquare,
-  SendHorizonal,
-  ShieldCheck,
-  AlertTriangle,
-  Clock3,
-  User,
-  UserCog,
-} from "lucide-react";
-
-const statusStyle = {
-  open:
-    "bg-yellow-100 text-yellow-700",
-  in_progress:
-    "bg-blue-100 text-blue-700",
-  resolved:
-    "bg-green-100 text-green-700",
-  closed:
-    "bg-slate-100 text-slate-700",
-};
-
-const priorityStyle = {
-  high:
-    "bg-red-100 text-red-700",
-  medium:
-    "bg-orange-100 text-orange-700",
-  low:
-    "bg-green-100 text-green-700",
-};
+import socket from "../../utils/socket";
+import { useSelector } from "react-redux";
 
 const AdminChats = () => {
-  const [loading, setLoading] =
-    useState(true);
+  const { user } = useSelector((state) => state.auth);
 
-  const [tickets, setTickets] =
-    useState([]);
+  const [tickets, setTickets] = useState([]);
+  const [selected, setSelected] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [reply, setReply] = useState("");
 
-  const [
-    selected,
-    setSelected,
-  ] = useState(null);
+  // ================= LOAD ALL COMPLAINTS =================
+  const loadTickets = async () => {
+    try {
+      const res = await axiosInstance.get("/admin/complaints");
+      setTickets(res.data.data || []);
+    } catch (err) {
+      console.log(err);
+    }
+  };
 
-  const [
-    messages,
-    setMessages,
-  ] = useState([]);
-
-  const [search, setSearch] =
-    useState("");
-
-  const [filter, setFilter] =
-    useState("all");
-
-  const [
-    reply,
-    setReply,
-  ] = useState("");
-
-  const bottomRef =
-    useRef(null);
-
-  // =====================================
-  // LOAD TICKETS
-  // =====================================
-  const fetchChats =
-    useCallback(
-      async (
-        showLoader = false
-      ) => {
-        try {
-          if (
-            showLoader
-          ) {
-            setLoading(
-              true
-            );
-          }
-
-          const res =
-            await axiosInstance.get(
-              "/admin/chats"
-            );
-
-          setTickets(
-            res.data
-              .tickets ||
-              []
-          );
-        } catch (
-          error
-        ) {
-          console.log(
-            error
-          );
-        } finally {
-          setLoading(
-            false
-          );
-        }
-      },
-      []
-    );
+  // ================= LOAD MESSAGES =================
+  const loadMessages = async (complaintId) => {
+    try {
+      const res = await axiosInstance.get(`/messages/${complaintId}`);
+      setMessages((res.data.data || []).reverse());
+    } catch (err) {
+      console.log(err);
+    }
+  };
 
   useEffect(() => {
-    fetchChats(false);
-  }, [fetchChats]);
+    loadTickets();
+  }, []);
 
-  // =====================================
-  // LOAD MESSAGES
-  // =====================================
-  const loadMessages =
-    async (
-      complaintId
-    ) => {
-      try {
-        const res =
-          await axiosInstance.get(
-            `/messages/${complaintId}`
-          );
+  // ================= OPEN CHAT =================
+  const openChat = (item) => {
+    setSelected(item);
+    loadMessages(item._id);
 
-        setMessages(
-          res.data
-            .messages ||
-            []
-        );
-      } catch (
-        error
-      ) {
-        console.log(
-          error
-        );
-      }
-    };
+    // 🔥 join socket room
+    socket.emit("joinComplaint", item._id);
+  };
+useEffect(() => {
+  if (!selected?._id) return;
 
-  // =====================================
-  // SELECT CHAT
-  // =====================================
-  const openChat =
-    (
-      item
-    ) => {
-      setSelected(
-        item
-      );
+  const handleMessage = (msg) => {
+    if (msg.complaintId === selected._id) {
+      setMessages((prev) => {
+        const exists = prev.some((m) => m._id === msg._id);
+        if (exists) return prev;
+        return [...prev, msg];
+      });
+    }
+  };
 
-      loadMessages(
-        item._id
-      );
-    };
+  socket.on("receiveMessage", handleMessage);
 
-  // =====================================
-  // SEND ADMIN MESSAGE
-  // =====================================
-  const sendReply =
-    async () => {
-      if (
-        !reply.trim() ||
-        !selected
-      )
-        return;
+  return () => {
+    socket.off("receiveMessage", handleMessage);
+  };
+}, [selected?._id]);
 
-      try {
-        await axiosInstance.post(
-          "/messages",
-          {
-            complaintId:
-              selected._id,
-            message:
-              reply,
-            type:
-              "admin",
-          }
-        );
+  // ================= SEND MESSAGE =================
+ const sendReply = () => {
+  if (!reply.trim() || !selected) return;
 
-        setReply("");
+  const tempMessage = {
+    _id: Date.now(), // temp id
+    complaintId: selected._id,
+    sender: { _id: user._id },
+    message: reply,
+    status: "sent",
+  };
 
-        loadMessages(
-          selected._id
-        );
-      } catch (
-        error
-      ) {
-        console.log(
-          error
-        );
-      }
-    };
+  // 🔥 show instantly in UI
+  setMessages((prev) => [...prev, tempMessage]);
 
-  // =====================================
-  // AUTO SCROLL
-  // =====================================
+  // 🔥 send to socket
+  socket.emit("sendMessage", {
+    complaintId: selected._id,
+    sender: user._id,
+    message: reply,
+  });
+
+  setReply("");
+};
+
+  // ================= MARK AS SEEN =================
+
   useEffect(() => {
-    bottomRef.current?.scrollIntoView(
-      {
-        behavior:
-          "smooth",
-      }
-    );
-  }, [messages]);
+  if (!selected?._id) return;
 
-  // =====================================
-  // FILTER DATA
-  // =====================================
-  const filtered =
-    useMemo(() => {
-      let data = [
-        ...tickets,
-      ];
+  messages.forEach((msg) => {
+    if (msg.status !== "seen") {
+      socket.emit("messageSeen", {
+        messageId: msg._id,
+        complaintId: selected._id,
+      });
+    }
+  });
+}, [messages, selected?._id]);
 
-      if (
-        filter !==
-        "all"
-      ) {
-        if (
-          filter ===
-          "inactive"
-        ) {
-          data =
-            data.filter(
-              (
-                item
-              ) =>
-                item.noReply
-            );
-        } else {
-          data =
-            data.filter(
-              (
-                item
-              ) =>
-                item.status ===
-                filter
-            );
-        }
-      }
 
-      if (
-        search.trim()
-      ) {
-        const q =
-          search.toLowerCase();
+  useEffect(() => {
+  const handler = (msg) => {
+    if (msg.complaintId === selected?._id) {
+      setMessages((prev) => [...prev, msg]);
+    }
+  };
 
-        data =
-          data.filter(
-            (
-              item
-            ) =>
-              item.ticketId
-                ?.toLowerCase()
-                .includes(
-                  q
-                ) ||
-              item.title
-                ?.toLowerCase()
-                .includes(
-                  q
-                ) ||
-              item.createdBy?.name
-                ?.toLowerCase()
-                .includes(
-                  q
-                )
-          );
-      }
+  socket.on("receiveMessage", handler);
 
-      return data;
-    }, [
-      tickets,
-      search,
-      filter,
-    ]);
+  return () => {
+    socket.off("receiveMessage", handler);
+  };
+}, [selected]);
 
   return (
-    <div className="min-h-screen bg-slate-100 p-6">
-      <div className="max-w-7xl mx-auto grid lg:grid-cols-3 gap-6">
+    <div className="flex h-[85vh] bg-white rounded-3xl overflow-hidden border">
 
-        {/* LEFT PANEL */}
-        <div className="lg:col-span-1 bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+      {/* ================= SIDEBAR ================= */}
+      <div className="w-1/3 border-r overflow-y-auto">
+        <h2 className="p-4 font-bold text-lg border-b">
+          Conversations
+        </h2>
 
-          {/* Header */}
-          <div className="p-6 border-b">
-            <h1 className="text-2xl font-bold text-slate-800">
-              Admin Chats
-            </h1>
-
-            <p className="text-sm text-slate-500 mt-1">
-              Monitor all live complaint conversations.
+        {tickets.map((item) => (
+          <div
+            key={item._id}
+            onClick={() => openChat(item)}
+            className={`p-4 cursor-pointer border-b hover:bg-gray-50 ${
+              selected?._id === item._id ? "bg-blue-50" : ""
+            }`}
+          >
+            <p className="font-semibold">{item.title}</p>
+            <p className="text-sm text-gray-500">
+              {item.createdBy?.name}
             </p>
           </div>
+        ))}
+      </div>
 
-          {/* Search + Filter */}
-          <div className="p-4 border-b space-y-3">
+      {/* ================= CHAT WINDOW ================= */}
+      <div className="flex-1 flex flex-col">
 
-            <div className="relative">
-              <Search
-                size={18}
-                className="absolute left-4 top-4 text-slate-400"
-              />
-
-              <input
-                type="text"
-                placeholder="Search chat..."
-                value={search}
-                onChange={(
-                  e
-                ) =>
-                  setSearch(
-                    e.target
-                      .value
-                  )
-                }
-                className="w-full h-12 border rounded-2xl pl-11 pr-4 outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-
-            <div className="relative">
-              <Filter
-                size={18}
-                className="absolute left-4 top-4 text-slate-400"
-              />
-
-              <select
-                value={filter}
-                onChange={(
-                  e
-                ) =>
-                  setFilter(
-                    e.target
-                      .value
-                  )
-                }
-                className="w-full h-12 border rounded-2xl pl-11 pr-4 appearance-none outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="all">
-                  All Chats
-                </option>
-                <option value="open">
-                  Open
-                </option>
-                <option value="in_progress">
-                  In Progress
-                </option>
-                <option value="resolved">
-                  Resolved
-                </option>
-                <option value="inactive">
-                  No Reply
-                </option>
-              </select>
-            </div>
-
+        {!selected ? (
+          <div className="flex-1 flex items-center justify-center text-gray-400">
+            Select a conversation
           </div>
+        ) : (
+          <>
+            {/* HEADER */}
+            <div className="p-4 border-b font-semibold">
+              {selected.title}
+            </div>
 
-          {/* Chat List */}
-          <div className="max-h-[72vh] overflow-y-auto">
+            {/* MESSAGES */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-50">
+              {messages.map((msg) => {
+                const isMe = msg.sender?._id === user._id;
 
-            {loading ? (
-              <div className="p-12 flex justify-center">
-                <Loader2 className="animate-spin text-slate-500" />
-              </div>
-            ) : filtered.length ===
-              0 ? (
-              <div className="p-10 text-center text-slate-500">
-                No chats found.
-              </div>
-            ) : (
-              filtered.map(
-                (
-                  item
-                ) => (
-                  <button
-                    key={
-                      item._id
-                    }
-                    onClick={() =>
-                      openChat(
-                        item
-                      )
-                    }
-                    className={`w-full text-left px-5 py-4 border-b hover:bg-slate-50 transition ${
-                      selected?._id ===
-                      item._id
-                        ? "bg-blue-50"
-                        : ""
+                return (
+                  <div
+                    key={msg._id}
+                    className={`max-w-xs px-4 py-2 rounded-2xl text-sm ${
+                      isMe
+                        ? "ml-auto bg-blue-600 text-white"
+                        : "bg-white border"
                     }`}
                   >
-
-                    <div className="flex items-center justify-between">
-
-                      <h3 className="font-semibold text-slate-800">
-                        {
-                          item.ticketId
-                        }
-                      </h3>
-
-                      <span
-                        className={`px-2 py-1 rounded-full text-[11px] font-semibold ${
-                          priorityStyle[
-                            item.priority
-                          ]
-                        }`}
-                      >
-                        {
-                          item.priority
-                        }
-                      </span>
-
-                    </div>
-
-                    <p className="text-sm text-slate-600 mt-1 truncate">
-                      {
-                        item.title
-                      }
-                    </p>
-
-                    <p className="text-xs text-slate-500 mt-2">
-                      {item.createdBy
-                        ?.name ||
-                        "User"}{" "}
-                      •{" "}
-                      {item.assignedTo
-                        ?.name ||
-                        "Unassigned"}
-                    </p>
-
-                  </button>
-                )
-              )
-            )}
-
-          </div>
-
-        </div>
-
-        {/* RIGHT PANEL */}
-        <div className="lg:col-span-2 bg-white rounded-3xl border border-slate-200 shadow-sm flex flex-col overflow-hidden">
-
-          {!selected ? (
-            <div className="flex-1 flex flex-col justify-center items-center text-center p-10">
-              <MessageSquare className="text-slate-400 mb-4" size={40} />
-              <h3 className="text-xl font-bold text-slate-800">
-                Select a Chat
-              </h3>
-              <p className="text-slate-500 mt-2">
-                Open any complaint conversation.
-              </p>
+                    {msg.message}
+                  </div>
+                );
+              })}
             </div>
-          ) : (
-            <>
-              {/* TOP */}
-              <div className="p-6 border-b">
 
-                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            {/* INPUT */}
+            <div className="p-4 border-t flex gap-2">
+              <input
+                value={reply}
+                onChange={(e) =>
+                  setReply(e.target.value)
+                }
+                className="flex-1 border rounded-xl px-4 py-2 outline-none"
+                placeholder="Type message..."
+              />
 
-                  <div>
-                    <h2 className="text-xl font-bold text-slate-800">
-                      {selected.ticketId}
-                    </h2>
-
-                    <p className="text-sm text-slate-500 mt-1">
-                      {selected.title}
-                    </p>
-                  </div>
-
-                  <div className="flex gap-2 flex-wrap">
-
-                    <span
-                      className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                        statusStyle[
-                          selected.status
-                        ]
-                      }`}
-                    >
-                      {
-                        selected.status
-                      }
-                    </span>
-
-                    <span
-                      className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                        priorityStyle[
-                          selected.priority
-                        ]
-                      }`}
-                    >
-                      {
-                        selected.priority
-                      }
-                    </span>
-
-                  </div>
-
-                </div>
-
-                <div className="flex gap-4 mt-4 text-sm text-slate-600 flex-wrap">
-
-                  <span className="flex items-center gap-2">
-                    <User size={14} />
-                    {selected.createdBy
-                      ?.name ||
-                      "User"}
-                  </span>
-
-                  <span className="flex items-center gap-2">
-                    <UserCog size={14} />
-                    {selected.assignedTo
-                      ?.name ||
-                      "No Agent"}
-                  </span>
-
-                </div>
-
-              </div>
-
-              {/* MESSAGES */}
-              <div className="flex-1 overflow-y-auto bg-slate-50 p-6 space-y-4">
-
-                {messages.map(
-                  (
-                    msg,
-                    index
-                  ) => {
-                    const admin =
-                      msg.type ===
-                      "admin";
-
-                    return (
-                      <div
-                        key={
-                          index
-                        }
-                        className={`flex ${
-                          admin
-                            ? "justify-end"
-                            : "justify-start"
-                        }`}
-                      >
-                        <div
-                          className={`max-w-lg px-5 py-3 rounded-3xl shadow-sm ${
-                            admin
-                              ? "bg-blue-600 text-white rounded-br-md"
-                              : "bg-white border rounded-bl-md"
-                          }`}
-                        >
-                          <p className="text-sm">
-                            {
-                              msg.message
-                            }
-                          </p>
-
-                          <p className="text-[11px] opacity-70 mt-2">
-                            {new Date(
-                              msg.createdAt
-                            ).toLocaleTimeString()}
-                          </p>
-                        </div>
-                      </div>
-                    );
-                  }
-                )}
-
-                <div ref={bottomRef} />
-
-              </div>
-
-              {/* ADMIN ACTION BAR */}
-              <div className="border-t bg-white p-4">
-
-                <div className="grid lg:grid-cols-3 gap-3 mb-4">
-
-                  <div className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-600 flex items-center gap-2">
-                    <Clock3 size={15} />
-                    Last Activity Tracked
-                  </div>
-
-                  <div className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-600 flex items-center gap-2">
-                    <AlertTriangle size={15} />
-                    Escalation Ready
-                  </div>
-
-                  <div className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-600 flex items-center gap-2">
-                    <ShieldCheck size={15} />
-                    Audit Safe
-                  </div>
-
-                </div>
-
-                <div className="flex gap-3">
-
-                  <input
-                    type="text"
-                    placeholder="Send admin intervention message..."
-                    value={reply}
-                    onChange={(
-                      e
-                    ) =>
-                      setReply(
-                        e.target
-                          .value
-                      )
-                    }
-                    onKeyDown={(
-                      e
-                    ) => {
-                      if (
-                        e.key ===
-                        "Enter"
-                      ) {
-                        sendReply();
-                      }
-                    }}
-                    className="flex-1 h-14 border rounded-2xl px-5 outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-
-                  <button
-                    onClick={
-                      sendReply
-                    }
-                    className="h-14 px-6 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
-                  >
-                    <SendHorizonal size={18} />
-                    Send
-                  </button>
-
-                </div>
-
-              </div>
-            </>
-          )}
-
-        </div>
-
+              <button
+                onClick={sendReply}
+                className="bg-blue-600 text-white px-6 rounded-xl hover:bg-blue-700"
+              >
+                Send
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
