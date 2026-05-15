@@ -1,81 +1,226 @@
+const mongoose = require("mongoose");
 const Message = require("../models/Message");
 
 const socketHandler = (io) => {
   io.on("connection", (socket) => {
+
     console.log("✅ Connected:", socket.id);
 
-    socket.on("joinComplaint", (complaintId) => {
-      if (!complaintId) return;
-      socket.join(complaintId);
-    });
+    // ======================================
+    // JOIN ROOM
+    // ======================================
+    socket.on(
+      "joinComplaint",
+      (complaintId) => {
 
-    socket.on("typing", ({ complaintId, user }) => {
-      if (!complaintId) return;
+        if (!complaintId) return;
 
-      socket.to(complaintId).emit("typing", {
-        userId: user?.id,
-      });
-    });
+        socket.join(complaintId);
 
-    socket.on("stopTyping", ({ complaintId, user }) => {
-      if (!complaintId) return;
-
-      socket.to(complaintId).emit("stopTyping", {
-        userId: user?.id,
-      });
-    });
-
-    socket.on("sendMessage", async (payload) => {
-      try {
-        const { complaintId, sender, message } = payload;
-
-        if (!complaintId || !sender || !message) return;
-
-        const newMessage = await Message.create({
-          complaintId,
-          sender,
-          message,
-        });
-
-        const populated = await newMessage.populate(
-          "sender",
-          "name email role"
+        console.log(
+          `📥 Joined Room: ${complaintId}`
         );
-
-        io.to(complaintId).emit("receiveMessage", populated);
-socket.emit("receiveMessage", populated); // 🔥 send back to sender
-
-      } catch (error) {
-        console.error("Message Error:", error.message);
       }
-    });
+    );
 
-    socket.on("messageSeen", async (payload) => {
-      try {
-        const { messageId, complaintId } = payload;
+    // ======================================
+    // LEAVE ROOM
+    // ======================================
+    socket.on(
+      "leaveComplaint",
+      (complaintId) => {
 
-        if (!messageId || !complaintId) return;
+        if (!complaintId) return;
 
-        const updated =
-          await Message.findByIdAndUpdate(
-            messageId,
-            { status: "seen" },
-            { new: true }
+        socket.leave(complaintId);
+
+        console.log(
+          `📤 Left Room: ${complaintId}`
+        );
+      }
+    );
+
+    // ======================================
+    // TYPING
+    // ======================================
+    socket.on(
+      "typing",
+      ({ complaintId, user }) => {
+
+        if (!complaintId) return;
+
+        socket.to(complaintId).emit(
+          "typing",
+          {
+            userId: user?.id,
+          }
+        );
+      }
+    );
+
+    // ======================================
+    // STOP TYPING
+    // ======================================
+    socket.on(
+      "stopTyping",
+      ({ complaintId, user }) => {
+
+        if (!complaintId) return;
+
+        socket.to(complaintId).emit(
+          "stopTyping",
+          {
+            userId: user?.id,
+          }
+        );
+      }
+    );
+
+    // ======================================
+    // SEND MESSAGE
+    // ======================================
+    socket.on(
+      "sendMessage",
+      async (payload) => {
+console.log("PAYLOAD:", payload);
+        try {
+
+          const {
+            complaintId,
+            sender,
+            message,
+          } = payload;
+
+          if (
+            !complaintId ||
+            !sender ||
+            !message?.trim()
+          ) {
+            return;
+          }
+
+          // SAVE MESSAGE
+          const newMessage =
+            await Message.create({
+              complaintId,
+              sender,
+              message: message.trim(),
+            });
+
+          // POPULATE
+          const populated =
+            await newMessage.populate(
+              "sender",
+              "name email role"
+            );
+
+          console.log(
+            "💬 Message Saved:",
+            populated._id
           );
 
-        io.to(complaintId).emit(
-          "messageSeen",
-          updated
+          // EMIT MESSAGE
+          io.to(complaintId).emit(
+            "receiveMessage",
+            populated
+          );
+
+        } catch (error) {
+
+          console.error(
+            "Message Error:",
+            error.message
+          );
+        }
+      }
+    );
+
+    // ======================================
+    // MESSAGE SEEN
+    // ======================================
+    socket.on(
+  "messageSeen",
+  async (payload) => {
+
+    try {
+
+      const {
+        messageId,
+        complaintId,
+        viewerId,
+      } = payload;
+
+      // VALIDATION
+      if (
+        !messageId ||
+        !complaintId ||
+        !viewerId ||
+        !mongoose.Types.ObjectId.isValid(
+          messageId
+        )
+      ) {
+        return;
+      }
+
+      // FIND MESSAGE
+      const message =
+        await Message.findById(
+          messageId
         );
 
-      } catch (error) {
-        console.error("Seen Error:", error.message);
+      if (!message) {
+        return;
       }
-    });
 
-    socket.on("disconnect", () => {
-      console.log("❌ Disconnected:", socket.id);
-    });
+      // DON'T ALLOW SENDER
+      // TO MARK OWN MESSAGE
+      if (
+        message.sender.toString() ===
+        viewerId
+      ) {
+        return;
+      }
+
+      // ALREADY SEEN
+      if (
+        message.status === "seen"
+      ) {
+        return;
+      }
+
+      // UPDATE STATUS
+      message.status = "seen";
+
+      await message.save();
+
+      io.to(complaintId).emit(
+        "messageSeen",
+        message
+      );
+
+    } catch (error) {
+
+      console.error(
+        "Seen Error:",
+        error.message
+      );
+    }
+  }
+);
+
+    // ======================================
+    // DISCONNECT
+    // ======================================
+    socket.on(
+      "disconnect",
+      () => {
+
+        console.log(
+          "❌ Disconnected:",
+          socket.id
+        );
+      }
+    );
   });
 };
 
