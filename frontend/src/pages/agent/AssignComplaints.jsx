@@ -15,7 +15,6 @@ import {
   useNavigate,
 } from "react-router-dom";
 
-import AgentLayout from "../../layouts/AgentLayout";
 
 import {
   fetchComplaints,
@@ -141,44 +140,41 @@ const AssignedComplaints = () => {
     ]);
 
   return (
-    <AgentLayout>
-      <div className="max-w-7xl mx-auto">
+     <div className="max-w-7xl mx-auto">
 
-        {/* HEADER */}
-        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-7 mb-6">
+    {/* HEADER */}
+    <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-7 mb-6">
 
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
 
-            <div>
-              <p className="text-sm text-slate-500">
-                Agent Queue
-              </p>
+        <div>
+          <p className="text-sm text-slate-500">
+            Agent Queue
+          </p>
 
-              <h1 className="text-3xl font-bold text-slate-800 mt-1">
-                Assigned Complaints
-              </h1>
+          <h1 className="text-3xl font-bold text-slate-800 mt-1">
+            Assigned Complaints
+          </h1>
 
-              <p className="text-slate-500 mt-2">
-                Manage your active tickets, respond quickly,
-                and close issues efficiently.
-              </p>
-            </div>
-
-            <div className="px-5 py-4 bg-blue-50 rounded-2xl min-w-[180px]">
-              <p className="text-sm text-blue-600 font-medium">
-                Total Assigned
-              </p>
-
-              <h2 className="text-3xl font-bold text-blue-700 mt-1">
-                {
-                  complaints.length
-                }
-              </h2>
-            </div>
-
-          </div>
-
+          <p className="text-slate-500 mt-2">
+            Manage your active tickets, respond quickly,
+            and close issues efficiently.
+          </p>
         </div>
+
+        <div className="px-5 py-4 bg-blue-50 rounded-2xl min-w-[180px]">
+          <p className="text-sm text-blue-600 font-medium">
+            Total Assigned
+          </p>
+
+          <h2 className="text-3xl font-bold text-blue-700 mt-1">
+            {complaints.length}
+          </h2>
+        </div>
+
+      </div>
+
+    </div>
 
         {/* FILTER BAR */}
         <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-5 mb-6">
@@ -462,7 +458,7 @@ const AssignedComplaints = () => {
         </div>
 
       </div>
-    </AgentLayout>
+   
   );
 };
 

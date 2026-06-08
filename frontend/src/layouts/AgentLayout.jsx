@@ -3,6 +3,7 @@
 import {
   NavLink,
   useNavigate,
+  Outlet,
 } from "react-router-dom";
 
 import {
@@ -14,9 +15,7 @@ import {
   logout,
 } from "../features/auth/authSlice";
 
-const AgentLayout = ({
-  children,
-}) => {
+const AgentLayout = () => {
   const dispatch =
     useDispatch();
 
@@ -148,8 +147,8 @@ const AgentLayout = ({
 
         {/* CONTENT */}
         <main className="p-6 flex-1 overflow-y-auto">
-          {children}
-        </main>
+  <Outlet />
+</main>
 
       </div>
     </div>

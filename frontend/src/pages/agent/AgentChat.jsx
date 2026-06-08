@@ -18,8 +18,6 @@ import {
 import axiosInstance from "../../api/axiosInstance";
 import socket from "../../utils/socket";
 
-import AgentLayout from "../../layouts/AgentLayout";
-
 import {
   ArrowLeft,
   SendHorizonal,
@@ -288,7 +286,6 @@ const AgentChat = () => {
         );
 
   return (
-    <AgentLayout>
       <div className="max-w-7xl mx-auto h-[84vh] grid lg:grid-cols-3 gap-6">
 
         {/* ================================= SIDEBAR */}
@@ -652,7 +649,7 @@ const AgentChat = () => {
         </div>
 
       </div>
-    </AgentLayout>
+    
   );
 };
 

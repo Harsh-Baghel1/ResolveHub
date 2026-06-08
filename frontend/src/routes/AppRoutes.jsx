@@ -14,6 +14,7 @@ import ForgotPassword from "../pages/auth/ForgotPassword";
 
 /* LAYOUTS */
 import AdminLayout from "../layouts/AdminLayout";
+import AgentLayout from "../layouts/AgentLayout";
 
 /* USER */
 import Dashboard from "../pages/user/Dashboard";
@@ -38,6 +39,8 @@ import AssignedComplaints from "../pages/agent/AssignComplaints";
 import ResolveComplaint from "../pages/agent/ResolveComplaint";
 import AgentChat from "../pages/agent/AgentChat";
 import AgentDetail from "../pages/admin/AgentDetail";
+import AgentPerformance from "../pages/agent/AgentPerformance";
+import AgentProfile from "../pages/agent/AgentProfile";
 
 /* ROUTE GUARDS */
 import ProtectedRoute from "./ProtectedRoute";
@@ -48,7 +51,7 @@ const AppRoutes = () => {
     <BrowserRouter>
       <Routes>
 
-        {/* ===================================== */}
+        { /*===================================== */}
         {/* AUTH ROUTES */}
         {/* ===================================== */}
 
@@ -153,49 +156,46 @@ const AppRoutes = () => {
         {/* AGENT ROUTES */}
         {/* ===================================== */}
 
-        <Route
-          path="/agent"
-          element={
-            <ProtectedRoute>
-              <RoleRoute allowedRoles={["agent"]}>
-                <AgentDashboard />
-              </RoleRoute>
-            </ProtectedRoute>
-          }
-        />
+       <Route
+  path="/agent"
+  element={
+    <ProtectedRoute>
+      <RoleRoute allowedRoles={["agent"]}>
+        <AgentLayout />
+      </RoleRoute>
+    </ProtectedRoute>
+  }
+>
+  <Route
+    index
+    element={<AgentDashboard />}
+  />
 
-        <Route
-          path="/agent/assigned"
-          element={
-            <ProtectedRoute>
-              <RoleRoute allowedRoles={["agent"]}>
-                <AssignedComplaints />
-              </RoleRoute>
-            </ProtectedRoute>
-          }
-        />
+  <Route
+    path="complaints"
+    element={<AssignedComplaints />}
+  />
 
-        <Route
-          path="/agent/resolve/:id"
-          element={
-            <ProtectedRoute>
-              <RoleRoute allowedRoles={["agent"]}>
-                <ResolveComplaint />
-              </RoleRoute>
-            </ProtectedRoute>
-          }
-        />
+  <Route
+    path="chat"
+    element={<AgentChat />}
+  />
 
-        <Route
-          path="/agent/chat/:id"
-          element={
-            <ProtectedRoute>
-              <RoleRoute allowedRoles={["agent"]}>
-                <AgentChat />
-              </RoleRoute>
-            </ProtectedRoute>
-          }
-        />
+  <Route
+  path="performance"
+  element={<AgentPerformance />}
+/>
+
+  <Route
+  path="profile"
+  element={<AgentProfile />}
+/>
+
+  <Route
+    path="resolve/:id"
+    element={<ResolveComplaint />}
+  />
+</Route>
 
         {/* ===================================== */}
         {/* COMMON ROUTES */}

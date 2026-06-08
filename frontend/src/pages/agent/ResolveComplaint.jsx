@@ -11,7 +11,6 @@ import {
 } from "react-router-dom";
 
 import axiosInstance from "../../api/axiosInstance";
-import AgentLayout from "../../layouts/AgentLayout";
 
 import {
   ArrowLeft,
@@ -167,18 +166,16 @@ const ResolveComplaint = () => {
     };
 
   if (loading) {
-    return (
-      <AgentLayout>
-        <div className="h-[70vh] flex justify-center items-center text-slate-500">
-          <Loader2 className="animate-spin mr-2" />
-          Loading complaint...
-        </div>
-      </AgentLayout>
-    );
-  }
+  return (
+    <div className="h-[70vh] flex justify-center items-center text-slate-500">
+      <Loader2 className="animate-spin mr-2" />
+      Loading complaint...
+    </div>
+  );
+}
 
   return (
-    <AgentLayout>
+    
       <div className="max-w-6xl mx-auto">
 
         {/* HEADER */}
@@ -453,7 +450,7 @@ const ResolveComplaint = () => {
         </div>
 
       </div>
-    </AgentLayout>
+    
   );
 };
 

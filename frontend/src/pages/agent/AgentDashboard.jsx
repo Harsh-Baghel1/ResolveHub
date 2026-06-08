@@ -1,6 +1,7 @@
 // frontend/src/pages/agent/AgentDashboard.jsx
 
 import {
+  useState,
   useEffect,
   useMemo,
 } from "react";
@@ -13,8 +14,6 @@ import {
 import {
   useNavigate,
 } from "react-router-dom";
-
-import AgentLayout from "../../layouts/AgentLayout";
 
 import {
   fetchComplaints,
@@ -119,8 +118,9 @@ const AgentDashboard = () => {
   const dispatch =
     useDispatch();
 
-  const navigate =
-    useNavigate();
+  const navigate = useNavigate();
+    const [activeFilter, setActiveFilter] =
+  useState("all");
 
   const {
     complaints = [],
@@ -145,10 +145,46 @@ const AgentDashboard = () => {
     );
   }, [dispatch]);
 
+  const filteredComplaints =
+  useMemo(() => {
+
+    switch (activeFilter) {
+
+      case "pending":
+        return complaints.filter(
+          (c) =>
+            c.status === "open" ||
+            c.status === "pending"
+        );
+
+      case "progress":
+        return complaints.filter(
+          (c) =>
+            c.status === "in_progress"
+        );
+
+      case "resolved":
+        return complaints.filter(
+          (c) =>
+            c.status === "resolved" ||
+            c.status === "closed"
+        );
+
+      default:
+        return complaints;
+    }
+
+  }, [
+    complaints,
+    activeFilter,
+  ]);
+
   const stats =
     useMemo(() => {
       const total =
         complaints.length;
+
+        
 
       const pending =
         complaints.filter(
@@ -201,14 +237,9 @@ const AgentDashboard = () => {
       complaints,
     ]);
 
-  const recent =
-    complaints.slice(
-      0,
-      5
-    );
+ 
 
   return (
-    <AgentLayout>
       <div className="max-w-7xl mx-auto">
 
         {/* HERO */}
@@ -257,67 +288,70 @@ const AgentDashboard = () => {
         {/* STATS */}
         <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-5 mb-6">
 
-          <StatCard
-            title="Assigned Tickets"
-            value={
-              stats.total
-            }
-            color="bg-blue-100 text-blue-700"
-            icon={
-              <ClipboardList
-                size={
-                  22
-                }
-              />
-            }
-          />
+          <div
+  onClick={() =>
+    setActiveFilter("all")
+  }
+  className="cursor-pointer"
+>
+  <StatCard
+    title="Assigned Tickets"
+    value={stats.total}
+    color="bg-blue-100 text-blue-700"
+    icon={
+      <ClipboardList size={22} />
+    }
+  />
+</div>
 
-          <StatCard
-            title="Pending"
-            value={
-              stats.pending
-            }
-            color="bg-yellow-100 text-yellow-700"
-            icon={
-              <Clock3
-                size={
-                  22
-                }
-              />
-            }
-          />
+         <div
+  onClick={() =>
+    setActiveFilter("pending")
+  }
+  className="cursor-pointer"
+>
+  <StatCard
+    title="Pending"
+    value={stats.pending}
+    color="bg-yellow-100 text-yellow-700"
+    icon={
+      <Clock3 size={22} />
+    }
+  />
+</div>
 
-          <StatCard
-            title="In Progress"
-            value={
-              stats.progress
-            }
-            color="bg-indigo-100 text-indigo-700"
-            icon={
-              <Ticket
-                size={
-                  22
-                }
-              />
-            }
-          />
+          <div
+  onClick={() =>
+    setActiveFilter("progress")
+  }
+  className="cursor-pointer"
+>
+  <StatCard
+    title="In Progress"
+    value={stats.progress}
+    color="bg-indigo-100 text-indigo-700"
+    icon={
+      <Ticket size={22} />
+    }
+  />
+</div>
 
-          <StatCard
-            title="Resolved"
-            value={
-              stats.resolved
-            }
-            color="bg-green-100 text-green-700"
-            icon={
-              <CheckCircle2
-                size={
-                  22
-                }
-              />
-            }
-          />
-
-        </div>
+         <div
+  onClick={() =>
+    setActiveFilter("resolved")
+  }
+  className="cursor-pointer"
+>
+  <StatCard
+    title="Resolved"
+    value={stats.resolved}
+    color="bg-green-100 text-green-700"
+    icon={
+      <CheckCircle2 size={22} />
+    }
+  />
+</div>
+</div>
 
         {/* LOWER GRID */}
         <div className="grid xl:grid-cols-3 gap-6">
@@ -328,12 +362,24 @@ const AgentDashboard = () => {
             <div className="px-6 py-5 border-b flex items-center justify-between">
               <div>
                 <h2 className="text-lg font-bold text-slate-800">
-                  Recent Assigned Complaints
-                </h2>
 
-                <p className="text-sm text-slate-500 mt-1">
-                  Latest tickets needing action.
-                </p>
+  {activeFilter === "all" &&
+    "Assigned Complaints"}
+
+  {activeFilter === "pending" &&
+    "Pending Complaints"}
+
+  {activeFilter === "progress" &&
+    "In Progress Complaints"}
+
+  {activeFilter === "resolved" &&
+    "Resolved Complaints"}
+
+</h2>
+
+               <p className="text-sm text-slate-500 mt-1">
+  Showing {activeFilter} complaints.
+</p>
               </div>
 
               <button
@@ -352,14 +398,14 @@ const AgentDashboard = () => {
               <div className="p-10 flex justify-center text-slate-500">
                 <Loader2 className="animate-spin" />
               </div>
-            ) : recent.length ===
-              0 ? (
+            ) : filteredComplaints.length === 
+            0 ? (
               <div className="p-10 text-center text-slate-500">
-                No assigned complaints yet.
+                No complaints found.
               </div>
             ) : (
               <div className="divide-y">
-                {recent.map(
+                {filteredComplaints.map(
                   (
                     item
                   ) => (
@@ -507,7 +553,7 @@ const AgentDashboard = () => {
         </div>
 
       </div>
-    </AgentLayout>
+    
   );
 };
 
