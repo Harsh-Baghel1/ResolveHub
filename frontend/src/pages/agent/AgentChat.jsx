@@ -102,7 +102,7 @@ const AgentChat = () => {
           setMessages(
             messageRes
               .data
-              .messages ||
+              .data ||
               []
           );
         } catch (
@@ -132,21 +132,29 @@ const AgentChat = () => {
       id
     );
 
-    socket.on(
-      "receiveMessage",
-      (
-        data
-      ) => {
-        setMessages(
-          (
-            prev
-          ) => [
-            ...prev,
-            data,
-          ]
-        );
-      }
+    socket.off("receiveMessage");
+
+socket.on("receiveMessage", (data) => {
+  setMessages((prev) => {
+    const exists = prev.some(
+      (m) => m._id === data._id
     );
+
+    if (exists) return prev;
+
+    return [...prev, data];
+  });
+});
+
+socket.on("messageSeen", (updated) => {
+  setMessages((prev) =>
+    prev.map((msg) =>
+      msg._id === updated._id
+        ? updated
+        : msg
+    )
+  );
+});
 
     socket.on(
       "typing",
@@ -165,21 +173,33 @@ const AgentChat = () => {
     );
 
     return () => {
-      socket.off(
-        "receiveMessage"
-      );
+      socket.off("receiveMessage");
+  socket.off("messageSeen");
+  socket.off("typing");
+  socket.off("stopTyping");
 
-      socket.off(
-        "typing"
-      );
-
-      socket.off(
-        "stopTyping"
-      );
-
-      socket.disconnect();
+     socket.emit("leaveComplaint", id);
     };
   }, [id]);
+
+// =====================================
+// MARK MESSAGES AS SEEN
+// =====================================
+useEffect(() => {
+  messages.forEach((msg) => {
+    if (
+      msg._id &&
+      msg.status !== "seen" &&
+      msg.sender?._id !== user?._id
+    ) {
+     socket.emit("messageSeen", {
+  messageId: msg._id,
+  complaintId: id,
+  viewerId: user?._id,
+});
+    }
+  });
+}, [messages, id, user]);
 
   // =====================================
   // SCROLL
@@ -210,8 +230,7 @@ const AgentChat = () => {
         {
           complaintId:
             id,
-          sender:
-            user.id,
+          sender: user._id,
           message:
             message.trim(),
         }
@@ -494,22 +513,14 @@ const AgentChat = () => {
             ) : (
               <div className="space-y-5">
 
-                {messages.map(
-                  (
-                    msg,
-                    index
-                  ) => {
+                {messages.map((msg) => {
                     const mine =
-                      msg.sender?._id ===
-                        user.id ||
-                      msg.sender ===
-                        user.id;
+  msg.sender?._id === user?._id ||
+  msg.sender === user?._id;
 
                     return (
                       <div
-                        key={
-                          index
-                        }
+                       key={msg._id}
                         className={`flex ${
                           mine
                             ? "justify-end"
@@ -524,9 +535,10 @@ const AgentChat = () => {
                           }`}
                         >
                           {!mine && (
-                            <p className="text-xs font-semibold text-blue-600 mb-1">
-                              User
-                            </p>
+                            <p className="text-xs font-semibold mb-1">
+  {msg.sender?.name || "Unknown"} (
+  {msg.sender?.role || "user"})
+</p>
                           )}
 
                           <p className="text-sm">
@@ -535,19 +547,24 @@ const AgentChat = () => {
                             }
                           </p>
 
-                          <p className="text-[11px] mt-2 opacity-70">
-                            {new Date(
-                              msg.createdAt
-                            ).toLocaleTimeString(
-                              [],
-                              {
-                                hour:
-                                  "2-digit",
-                                minute:
-                                  "2-digit",
-                              }
-                            )}
-                          </p>
+                         <div className="flex items-center justify-end gap-1 mt-2">
+  <p className="text-[11px] opacity-70">
+    {new Date(
+      msg.createdAt
+    ).toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    })}
+  </p>
+
+  {mine && (
+    <span className="text-[10px]">
+      {msg.status === "seen"
+        ? "✓✓"
+        : "✓"}
+    </span>
+  )}
+</div>
                         </div>
                       </div>
                     );
